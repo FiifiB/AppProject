@@ -4,6 +4,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
+import com.mapquest.android.maps.GeoPoint;
+import com.mapquest.android.maps.MapActivity;
+import com.mapquest.android.maps.MapController;
+import com.mapquest.android.maps.MapView;
+import com.mapquest.android.maps.MyLocationOverlay;
+import com.mapquest.android.maps.Overlay;
+import com.mapquest.android.maps.OverlayItem;
+
 import com.AuthorizationAndStore.CredentialStore;
 import com.AuthorizationAndStore.OAuth2ClientCredentials;
 import com.AuthorizationAndStore.SharedPreferencesCredentialStore;
@@ -17,13 +25,7 @@ import com.example.topspot.R.drawable;
 import com.example.topspot.R.id;
 import com.example.topspot.R.layout;
 import com.example.topspot.R.menu;
-import com.google.android.maps.GeoPoint;
-import com.google.android.maps.MapActivity;
-import com.google.android.maps.MapController;
-import com.google.android.maps.MapView;
-import com.google.android.maps.MyLocationOverlay;
-import com.google.android.maps.Overlay;
-import com.google.android.maps.OverlayItem;
+
 import com.google.api.client.auth.oauth2.draft10.AccessTokenResponse;
 
 import fi.foyt.foursquare.api.FoursquareApi;
@@ -69,9 +71,11 @@ public class MapsActivity extends MapActivity {
 	private double lng;
 	private List<Overlay> mapOverlays;
 	private VenuesOverlay locOverlay;
+	private MyLocationOverlay myLocationOverlay;
 	private CompactVenue[] compactVenues ;
 	private List<String> RegisteredVeneus = new ArrayList<String>();
 	private BroadcastReceiver proxiReceiver;
+	private IntentFilter filter;
 	private static final String TREASURE_PROXIMITY_ALERT = "com.topspot.action.proximityalert";
 
 	@Override
@@ -84,11 +88,11 @@ public class MapsActivity extends MapActivity {
 		
 		System.out.println(accessTokenResponse.refreshToken);
 		
-		mapview = (MapView)findViewById(R.id.mapview);
+		mapview = (MapView)findViewById(R.id.map);
 		mapview.setBuiltInZoomControls(true);
 		mcontroller = mapview.getController();
 		mapOverlays = mapview.getOverlays();
-		MyLocationOverlay myLocationOverlay = new MyLocationOverlay(this, mapview);
+		myLocationOverlay = new MyLocationOverlay(this, mapview);
 		myLocationOverlay.enableCompass();
 		myLocationOverlay.enableMyLocation();
 		mapOverlays.add(myLocationOverlay);
@@ -120,7 +124,7 @@ public class MapsActivity extends MapActivity {
 		mcontroller.animateTo(point);
 		mcontroller.setZoom(18);
 		
-		IntentFilter filter = new IntentFilter(TREASURE_PROXIMITY_ALERT);
+		filter = new IntentFilter(TREASURE_PROXIMITY_ALERT);
 		proxiReceiver = new ProximityIntentReceiver();
 		registerReceiver(proxiReceiver, filter);		
 		registerIntents(locationManager);
@@ -330,7 +334,16 @@ public class MapsActivity extends MapActivity {
 	public void onPause(){
 		super.onPause();
 		unregisterReceiver(proxiReceiver);
+		myLocationOverlay.disableCompass();
+	    myLocationOverlay.disableMyLocation();
 		
 	}
+	
+	protected void onResume() {
+	      myLocationOverlay.enableMyLocation();
+	      myLocationOverlay.enableCompass();
+	      registerReceiver(proxiReceiver, filter);
+	      super.onResume();
+	    }
 
 }

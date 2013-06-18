@@ -2,8 +2,10 @@ package com.Topspot;
 
 import java.util.ArrayList;
 
-import com.google.android.maps.ItemizedOverlay;
-import com.google.android.maps.OverlayItem;
+import com.mapquest.android.maps.ItemizedOverlay;
+import com.mapquest.android.maps.OverlayItem;
+
+
 
 import android.app.AlertDialog;
 import android.content.Context;

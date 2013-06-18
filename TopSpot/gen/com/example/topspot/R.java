@@ -35,7 +35,7 @@ public final class R {
         public static final int imageView1=0x7f080004;
         public static final int imageView2=0x7f080005;
         public static final int intro=0x7f080001;
-        public static final int mapview=0x7f080006;
+        public static final int map=0x7f080006;
         public static final int pager=0x7f080000;
         public static final int row_layout=0x7f080008;
         public static final int row_placeaddress=0x7f08000b;
