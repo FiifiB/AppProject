@@ -2,15 +2,12 @@ package com.Topspot;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Scanner;
 import java.util.concurrent.ExecutionException;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
-import org.codehaus.jackson.annotate.JsonTypeInfo.Id;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import DynamoDBTasks.GetUserIdsDynamo;
 import android.app.ListActivity;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
@@ -28,7 +25,6 @@ import android.widget.TextView;
 import com.AuthorizationAndStore.CredentialStore;
 import com.AuthorizationAndStore.OAuth2ClientCredentials;
 import com.AuthorizationAndStore.SharedPreferencesCredentialStore;
-import com.DatabseTasks.GetUserIdsTask;
 import com.example.topspot.R;
 import com.google.api.client.auth.oauth2.draft10.AccessProtectedResource;
 import com.google.api.client.auth.oauth2.draft10.AccessProtectedResource.Method;
@@ -39,7 +35,6 @@ import com.google.api.client.http.HttpRequestFactory;
 import com.google.api.client.http.HttpResponse;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.http.javanet.NetHttpTransport;
-import com.google.gson.Gson;
 
 import fi.foyt.foursquare.api.FoursquareApi;
 import fi.foyt.foursquare.api.io.DefaultIOHandler;
@@ -51,8 +46,6 @@ public class FriendsActivity extends ListActivity {
 	private List<String> UserFriendsID = new ArrayList<String>();
 	private List<UserAndVen> UserFriends = new ArrayList<UserAndVen>();
 	private List<String> IdsInVenues = new ArrayList<String>();	
-	private String UserId;
-	
 	private String FOURSQUARE_API_ENDPOINT;
 
 	@Override
@@ -289,7 +282,7 @@ public class FriendsActivity extends ListActivity {
 		try {
 			IdsInVenues.clear();
 			
-			IdsInVenues = new GetUserIdsTask().execute().get();	
+			IdsInVenues = new GetUserIdsDynamo().execute().get();	
 			System.out.println("IdsInVenues: "+IdsInVenues.size());
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block

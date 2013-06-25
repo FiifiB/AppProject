@@ -4,37 +4,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
-import com.mapquest.android.maps.GeoPoint;
-import com.mapquest.android.maps.MapActivity;
-import com.mapquest.android.maps.MapController;
-import com.mapquest.android.maps.MapView;
-import com.mapquest.android.maps.MyLocationOverlay;
-import com.mapquest.android.maps.Overlay;
-import com.mapquest.android.maps.OverlayItem;
-
-import com.AuthorizationAndStore.CredentialStore;
-import com.AuthorizationAndStore.OAuth2ClientCredentials;
-import com.AuthorizationAndStore.SharedPreferencesCredentialStore;
-import com.DatabseTasks.AddIdTask;
-import com.DatabseTasks.GetLocationsTask;
-import com.DatabseTasks.GetNoOfPeopleTask;
-import com.DatabseTasks.RemoveIdTask;
-import com.Topspot.MapsActivity.ProximityIntentReceiver;
-import com.example.topspot.R;
-import com.example.topspot.R.drawable;
-import com.example.topspot.R.id;
-import com.example.topspot.R.layout;
-import com.example.topspot.R.menu;
-
-import com.google.api.client.auth.oauth2.draft10.AccessTokenResponse;
-
-import fi.foyt.foursquare.api.FoursquareApi;
-import fi.foyt.foursquare.api.FoursquareApiException;
-import fi.foyt.foursquare.api.Result;
-import fi.foyt.foursquare.api.entities.CompactVenue;
-import fi.foyt.foursquare.api.entities.VenuesSearchResult;
-import fi.foyt.foursquare.api.io.DefaultIOHandler;
-
+import DynamoDBTasks.AddIdDynamo;
+import DynamoDBTasks.GetLocationsDynamo;
+import DynamoDBTasks.GetNoOfPeopleDynamo;
+import DynamoDBTasks.RemoveIdDynamo;
+import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.SharedPreferences;
+import android.graphics.drawable.Drawable;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
@@ -43,17 +23,29 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.app.Activity;
-import android.app.PendingIntent;
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
-import android.content.SharedPreferences;
-import android.graphics.drawable.Drawable;
 import android.util.Log;
 import android.view.Menu;
 import android.widget.Toast;
+
+import com.AuthorizationAndStore.CredentialStore;
+import com.AuthorizationAndStore.OAuth2ClientCredentials;
+import com.AuthorizationAndStore.SharedPreferencesCredentialStore;
+import com.example.topspot.R;
+import com.google.api.client.auth.oauth2.draft10.AccessTokenResponse;
+import com.mapquest.android.maps.GeoPoint;
+import com.mapquest.android.maps.MapActivity;
+import com.mapquest.android.maps.MapController;
+import com.mapquest.android.maps.MapView;
+import com.mapquest.android.maps.MyLocationOverlay;
+import com.mapquest.android.maps.Overlay;
+import com.mapquest.android.maps.OverlayItem;
+
+import fi.foyt.foursquare.api.FoursquareApi;
+import fi.foyt.foursquare.api.FoursquareApiException;
+import fi.foyt.foursquare.api.Result;
+import fi.foyt.foursquare.api.entities.CompactVenue;
+import fi.foyt.foursquare.api.entities.VenuesSearchResult;
+import fi.foyt.foursquare.api.io.DefaultIOHandler;
 
 public class MapsActivity extends MapActivity {
 	private MapView mapview;
@@ -88,6 +80,7 @@ public class MapsActivity extends MapActivity {
 		
 		System.out.println(accessTokenResponse.refreshToken);
 		
+		//Settings for the map
 		mapview = (MapView)findViewById(R.id.map);
 		mapview.setBuiltInZoomControls(true);
 		mcontroller = mapview.getController();
@@ -99,7 +92,7 @@ public class MapsActivity extends MapActivity {
 		Drawable drawable = this.getResources().getDrawable(R.drawable.androidmarker);
 		locOverlay = new VenuesOverlay(drawable,this);
 		
-		
+		//get the location manageer
 		locationManager = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
 		
 		//Sets Criteria to get the best location provider		
@@ -118,12 +111,14 @@ public class MapsActivity extends MapActivity {
 		
 		locationManager.requestLocationUpdates(bestProvider, time, distance, myLocationListner);
 		
+		//Put map to current location
 		Double geoLat = myLoc.getLatitude()*1E6;
 		Double geoLng = myLoc.getLongitude()*1E6;
 		GeoPoint point = new GeoPoint(geoLat.intValue(), geoLng.intValue());
 		mcontroller.animateTo(point);
 		mcontroller.setZoom(18);
 		
+		//Set up for proximity alerts
 		filter = new IntentFilter(TREASURE_PROXIMITY_ALERT);
 		proxiReceiver = new ProximityIntentReceiver();
 		registerReceiver(proxiReceiver, filter);		
@@ -271,10 +266,10 @@ public class MapsActivity extends MapActivity {
 			String key = LocationManager.KEY_PROXIMITY_ENTERING;
 			Boolean entering = intent.getBooleanExtra(key, false);			
 			if(entering){
-				new AddIdTask().execute(Location,UserId);
+				new AddIdDynamo().execute(Location,UserId);
 				Toast.makeText(getApplicationContext(), "im entering", Toast.LENGTH_LONG).show();
 			}else {
-				new RemoveIdTask().execute(Location,UserId);
+				new RemoveIdDynamo().execute(Location,UserId);
 				Toast.makeText(getApplicationContext(), "im exiting", Toast.LENGTH_LONG).show();
 			}
 						
@@ -298,7 +293,7 @@ public class MapsActivity extends MapActivity {
 	
 	public void getRegisteredLocation(){
 		try {
-			RegisteredVeneus = new GetLocationsTask().execute().get();			
+			RegisteredVeneus = new GetLocationsDynamo().execute().get();			
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -311,7 +306,7 @@ public class MapsActivity extends MapActivity {
 	public Integer getPeople(String Location){
 		Integer count = null;		
 		try {
-			count = new GetNoOfPeopleTask().execute(Location).get();			
+			count = new GetNoOfPeopleDynamo().execute(Location).get();			
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
