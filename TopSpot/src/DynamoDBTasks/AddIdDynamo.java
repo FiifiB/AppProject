@@ -21,13 +21,18 @@ import com.amazonaws.services.dynamodb.model.UpdateItemResult;
 
 import android.os.AsyncTask;
 
+/**
+ * This thread adds the user's ID to the venue they are in and increments the count of number of people in the venue
+ * @author Fiifi
+ *
+ */
 public class AddIdDynamo extends AsyncTask<String, Void, String> {
 	private static AmazonDynamoDBClient client;
 	private static String tableName = "Venues";
 	private static String VenueName;
 	
 	/**
-	 * methed is used to get the name of the venue needed to store id in
+	 * The method is used to get the name of the venue needed to store id in
 	 * @param attributeList
 	 * This Map contains information about an item in the DataBase.
 	 */
@@ -39,6 +44,13 @@ public class AddIdDynamo extends AsyncTask<String, Void, String> {
         }
     }
 	
+	/**
+	 * Gets name of the venue with the specified coordinates
+	 * @param Loc
+	 * The coordinates of the selected location
+	 * @return
+	 * The name of the location
+	 */
 	private String getName(String Loc){
 		 try {
 	            
@@ -61,6 +73,11 @@ public class AddIdDynamo extends AsyncTask<String, Void, String> {
 		return VenueName;		
 	}
 	
+	/**
+	 * This method inputs the users id into a specified location
+	 * @param Location
+	 * @param UserID
+	 */
     private static void updateMultipleAttributes(String Location, String UserID) {
         try {
             Map<String, AttributeValueUpdate> updateItems = 
@@ -106,6 +123,7 @@ public class AddIdDynamo extends AsyncTask<String, Void, String> {
 		AWSCredentials credentials = null;
 		getName(venue);
 		try {
+			//gets credentials needed to access the Database
 			credentials = new PropertiesCredentials(
 			        AddIdDynamo.class.getResourceAsStream("AwsCredentials.properties"));
 		} catch (IOException e1) {

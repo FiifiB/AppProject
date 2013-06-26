@@ -20,6 +20,11 @@ import com.amazonaws.services.dynamodb.model.UpdateItemResult;
 
 import android.os.AsyncTask;
 
+/**
+ * This thread removes the user's ID from the venue they were in and decreases the number count of people in the venue
+ * @author Fiifi
+ *
+ */
 public class RemoveIdDynamo extends AsyncTask<String, Void, String>{
 	
 	private static AmazonDynamoDBClient client;

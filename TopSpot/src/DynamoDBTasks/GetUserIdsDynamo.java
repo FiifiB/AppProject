@@ -19,6 +19,11 @@ import com.amazonaws.services.dynamodb.model.ScanResult;
 
 import android.os.AsyncTask;
 
+/**
+ * Gets all user Ids in the database with the associated venue they are in
+ * @author Fiifi
+ *
+ */
 public class GetUserIdsDynamo extends AsyncTask<Void, Void, ArrayList<String>>{
 	private static AmazonDynamoDBClient client;
 	private static String tableName = "Venues";

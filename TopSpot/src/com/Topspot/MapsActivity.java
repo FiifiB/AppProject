@@ -8,9 +8,11 @@ import DynamoDBTasks.AddIdDynamo;
 import DynamoDBTasks.GetLocationsDynamo;
 import DynamoDBTasks.GetNoOfPeopleDynamo;
 import DynamoDBTasks.RemoveIdDynamo;
+import android.app.AlertDialog;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
@@ -76,9 +78,17 @@ public class MapsActivity extends MapActivity {
 		setContentView(R.layout.activity_maps);
 		this.prefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
 		this.credentialStore = new SharedPreferencesCredentialStore(prefs);
+		
+		//Get access token from the shared preferences 
 		AccessTokenResponse accessTokenResponse = credentialStore.read();
 		
-		System.out.println(accessTokenResponse.refreshToken);
+		//get the location manageer
+		locationManager = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
+		
+		//Check to see if gps is on
+		if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)){
+			
+		
 		
 		//Settings for the map
 		mapview = (MapView)findViewById(R.id.map);
@@ -92,8 +102,8 @@ public class MapsActivity extends MapActivity {
 		Drawable drawable = this.getResources().getDrawable(R.drawable.androidmarker);
 		locOverlay = new VenuesOverlay(drawable,this);
 		
-		//get the location manageer
-		locationManager = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
+		
+		
 		
 		//Sets Criteria to get the best location provider		
 		criteria.setAccuracy(Criteria.ACCURACY_COARSE);
@@ -102,10 +112,10 @@ public class MapsActivity extends MapActivity {
 		criteria.setBearingRequired(false);
 		criteria.setSpeedRequired(false);
 		criteria.setCostAllowed(true);
-		String bestProvider = locationManager.getBestProvider(criteria, true);
+		String bestProvider = locationManager.getBestProvider(criteria, true);		
+		
+		//gets your current location
 		myLoc = locationManager.getLastKnownLocation(bestProvider);
-		
-		
 		
 		
 		
@@ -124,9 +134,30 @@ public class MapsActivity extends MapActivity {
 		registerReceiver(proxiReceiver, filter);		
 		registerIntents(locationManager);
 		
-		getRegisteredLocation();		
+		//Launches thread to get Locations in the Database 
+		getRegisteredLocation();
+		
 		updateWithNewLocation(myLoc);
 		new getUserId().execute();
+		
+		}else if(!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)){
+			System.out.println("no GPS found..........");
+			AlertDialog.Builder notice = new AlertDialog.Builder(this);
+			notice.setTitle("Turn on GPS")
+			.setMessage("Please turn on GPS Location to use the app")
+			.setPositiveButton("Location Settings", new DialogInterface.OnClickListener() {
+				
+				@Override
+				public void onClick(DialogInterface dialog, int which) {
+					Intent in = new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+					finish();
+					startActivity(in);
+					
+				}
+			});	
+			AlertDialog alert = notice.create();
+			alert.show();
+		}
 	}
 
 	@Override
@@ -141,6 +172,8 @@ public class MapsActivity extends MapActivity {
 		// TODO Auto-generated method stub
 		return false;
 	}
+	
+	//Gets foursquare API to perform tasks
 	public FoursquareApi getFoursquareApi() {
 		if (this.foursquareApi==null) {
 			this.prefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
@@ -224,6 +257,7 @@ public class MapsActivity extends MapActivity {
 
 	}
 	
+	//Location Listener to perform tasks on locations changed or status of GPS
 	LocationListener myLocationListner = new LocationListener() {
 		
 		@Override
@@ -241,6 +275,22 @@ public class MapsActivity extends MapActivity {
 		@Override
 		public void onProviderDisabled(String provider) {
 			//Update app if provider is disabled
+			if (!locationManager.isProviderEnabled(provider)){
+				AlertDialog.Builder notice = new AlertDialog.Builder(getApplicationContext());
+				notice.setTitle("Turn on GPS")
+				.setMessage("Please turn on GPS Location to use the app")
+				.setPositiveButton("Location Settings", new DialogInterface.OnClickListener() {
+					
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						Intent in = new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+						finish();
+						startActivity(in);
+						
+					}
+				});	
+				AlertDialog alert = notice.create();
+			}
 			
 		}
 		
@@ -305,15 +355,15 @@ public class MapsActivity extends MapActivity {
 	}
 	public Integer getPeople(String Location){
 		Integer count = null;		
-//		try {
-//			count = new GetNoOfPeopleDynamo().execute(Location).get();			
-//		} catch (InterruptedException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		} catch (ExecutionException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
+		try {
+			count = new GetNoOfPeopleDynamo().execute(Location).get();			
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (ExecutionException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		return count;
 	}
 	private void registerIntents(LocationManager locManager) {
@@ -327,18 +377,56 @@ public class MapsActivity extends MapActivity {
 	}
 	
 	public void onPause(){
-		super.onPause();
-		unregisterReceiver(proxiReceiver);
-		myLocationOverlay.disableCompass();
-	    myLocationOverlay.disableMyLocation();
+		if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)){
+			super.onPause();
+			unregisterReceiver(proxiReceiver);
+			myLocationOverlay.disableCompass();
+		    myLocationOverlay.disableMyLocation();
+		}else {
+			super.onPause();			
+			AlertDialog.Builder notice = new AlertDialog.Builder(this);
+			notice.setTitle("Turn on GPS")
+			.setMessage("Please turn on GPS Location to use the app")
+			.setPositiveButton("Location Settings", new DialogInterface.OnClickListener() {
+				
+				@Override
+				public void onClick(DialogInterface dialog, int which) {
+					Intent in = new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+					finish();
+					startActivity(in);
+					
+				}
+			});	
+			AlertDialog alert = notice.create();
+			alert.show();
+		}
 		
 	}
 	
 	protected void onResume() {
+		if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)){
 	      myLocationOverlay.enableMyLocation();
 	      myLocationOverlay.enableCompass();
 	      registerReceiver(proxiReceiver, filter);
 	      super.onResume();
+		}else {
+			super.onResume();			
+			AlertDialog.Builder notice = new AlertDialog.Builder(this);
+			notice.setTitle("Turn on GPS")
+			.setMessage("Please turn on GPS Location to use the app")
+			.setPositiveButton("Location Settings", new DialogInterface.OnClickListener() {
+				
+				@Override
+				public void onClick(DialogInterface dialog, int which) {
+					Intent in = new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+					finish();
+					startActivity(in);
+					
+				}
+			});	
+			AlertDialog alert = notice.create();
+		}
+		
 	    }
 
 }

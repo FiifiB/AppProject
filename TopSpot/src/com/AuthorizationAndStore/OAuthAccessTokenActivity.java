@@ -69,6 +69,7 @@ final String TAG = getClass().getName();
             public void onPageFinished(WebView view, String url)  {  
         		
         		if (url.startsWith(OAuth2ClientCredentials.REDIRECT_URI)) {
+        			finish();
         			startActivity(new Intent(OAuthAccessTokenActivity.this,ContainActivity.class));
         		}
             	

@@ -14,6 +14,11 @@ import com.amazonaws.services.dynamodb.model.Key;
 
 import android.os.AsyncTask;
 
+/**
+ * Thread that gets the number of people in the specified venue
+ * @author Fiifi
+ *
+ */
 public class GetNoOfPeopleDynamo extends AsyncTask<String, Void, Integer> {
 	private static AmazonDynamoDBClient client;
 	private static String tableName = "Venues";

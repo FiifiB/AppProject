@@ -14,6 +14,11 @@ import com.amazonaws.services.dynamodb.model.ScanResult;
 
 import android.os.AsyncTask;
 
+/**
+ * This thread gets all locations in the Database
+ * @author Fiifi
+ *
+ */
 public class GetLocationsDynamo extends AsyncTask<Void, Void, ArrayList<String>>{
 	private static AmazonDynamoDBClient client;
 	private static String tableName = "Venues";
