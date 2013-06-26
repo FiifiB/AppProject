@@ -15,6 +15,13 @@ import android.widget.Toast;
 import com.Topspot.ContainActivity;
 import com.google.api.client.auth.oauth2.draft10.AuthorizationRequestUrl;
 
+/**
+ * This Activity is responsible for launching authorisation webpage to use foursquare
+ * Uses Webview to launch webpage
+ * @author Fiifi
+ *
+ */
+
 public class OAuthAccessTokenActivity extends Activity {
 
 final String TAG = getClass().getName();
@@ -48,6 +55,7 @@ final String TAG = getClass().getName();
         		int start = url.indexOf(fragment);
                 if (start > -1) {
                     // You can use the accessToken for api calls now.
+                	//We store the access token in the sharedPreference
                     accesstoken = url.substring(start + fragment.length(), url.length());
                     prefs.edit().putString("AccessToken", accesstoken).commit();
                    
@@ -63,52 +71,15 @@ final String TAG = getClass().getName();
         		if (url.startsWith(OAuth2ClientCredentials.REDIRECT_URI)) {
         			startActivity(new Intent(OAuthAccessTokenActivity.this,ContainActivity.class));
         		}
-//            	if (url.startsWith(OAuth2ClientCredentials.REDIRECT_URI)) {
-//            		try {
-//						
-//            			if (url.indexOf("code=")!=-1) {
-//            			
-//	            			String code = extractCodeFromUrl(url);
-//							
-//	            	        AuthorizationCodeGrant request = new AuthorizationCodeGrant(new NetHttpTransport(),
-//	            	                new JacksonFactory(),
-//	            	                OAuth2ClientCredentials.ACCESS_TOKEN_URL,
-//	            	                OAuth2ClientCredentials.CLIENT_ID, 
-//	            	                OAuth2ClientCredentials.CLIENT_SECRET,
-//	            	                code,
-//	            	                OAuth2ClientCredentials.REDIRECT_URI);
-//	            	            AccessTokenResponse accessTokenResponse = request.execute();
-//
-//	            	            CredentialStore credentialStore = new SharedPreferencesCredentialStore(prefs);
-//							credentialStore.write(accessTokenResponse );
-//				  		      view.setVisibility(View.INVISIBLE);
-//				  		      startActivity(new Intent(OAuthAccessTokenActivity.this,ContainActivity.class));
-//            			} else if (url.indexOf("error=")!=-1) {
-//            				view.setVisibility(View.INVISIBLE);
-//            				new SharedPreferencesCredentialStore(prefs).clearCredentials();
-//            				startActivity(new Intent(OAuthAccessTokenActivity.this,ContainActivity.class));
-//            			}
-//            			
-//					} catch (HttpResponseException e) {
-//						try {
-//							System.out.println("Error occured " + e.response.parseAsString());
-//						} catch (IOException e1) {
-//							e1.printStackTrace();
-//						}
-//					} catch (Exception e) {
-//							e.printStackTrace();
-//						}
-//
-//            	}
-//                System.out.println("onPageFinished : " + url);
-////                startActivity(new Intent(OAuthAccessTokenActivity.this,ContainActivity.class));
-//  		      
+            	
             }
 			private String extractCodeFromUrl(String url) {
 				return url.substring(OAuth2ClientCredentials.REDIRECT_URI.length()+6,url.length());
 			}  
         });  
         
+        
+        //This adjust settings to load the correct webpage needed to authorize the app
         AuthorizationRequestUrl authorizationRequestUrl = new AuthorizationRequestUrl(OAuth2ClientCredentials.AUTHORIZATION_URL);
 		authorizationRequestUrl.clientId = OAuth2ClientCredentials.CLIENT_ID;
 		authorizationRequestUrl.redirectUri = OAuth2ClientCredentials.REDIRECT_URI;

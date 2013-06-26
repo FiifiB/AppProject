@@ -12,6 +12,12 @@ import android.view.Menu;
 import android.widget.TabHost;
 import android.widget.TabHost.TabSpec;
 
+/**
+ * This Activity is used to contain activities in the app such as the main maps
+ * activity or friends activity used to find which venues your friends are in
+ * @author Fiifi
+ *
+ */
 public class ContainActivity extends TabActivity {
 
 	@Override

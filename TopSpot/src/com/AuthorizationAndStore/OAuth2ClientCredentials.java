@@ -1,5 +1,11 @@
 package com.AuthorizationAndStore;
 
+/**
+ * Class containing information to access foursquare functions
+ * @author Fiifi
+ *
+ */
+
 public class OAuth2ClientCredentials {
 
 	public static final String CLIENT_ID = "CJAXO0HZOJDQS4DVOKSXZGNQAPOAWLW0A4S0TBXLRFRUJGE5";

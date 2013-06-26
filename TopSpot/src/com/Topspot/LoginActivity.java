@@ -11,6 +11,11 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
 
+/**
+ * Login activity that directs users to authorization page
+ * @author Fiifi
+ *
+ */
 public class LoginActivity extends Activity {
 
 	@Override

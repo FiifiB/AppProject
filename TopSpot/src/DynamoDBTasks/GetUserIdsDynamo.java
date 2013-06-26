@@ -33,8 +33,7 @@ public class GetUserIdsDynamo extends AsyncTask<Void, Void, ArrayList<String>>{
             List<String> temp = value.getSS();            
             for(String i: temp){
             	UserId.add(i);
-            }
-                    
+            }                    
         }        
     }
 	
@@ -65,7 +64,6 @@ public class GetUserIdsDynamo extends AsyncTask<Void, Void, ArrayList<String>>{
 		    printItem(item);
 		}
 		
-			
 			client.shutdown();
 		return UserId;
 	}

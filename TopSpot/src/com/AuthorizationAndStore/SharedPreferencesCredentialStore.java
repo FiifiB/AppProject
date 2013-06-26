@@ -6,7 +6,11 @@ import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 
 
-
+/**
+ * Class defines functions used to access the access token throughout the app
+ * @author Fiifi
+ *
+ */
 public class SharedPreferencesCredentialStore implements CredentialStore {
 
 	private static final String ACCESS_TOKEN = "access_token";

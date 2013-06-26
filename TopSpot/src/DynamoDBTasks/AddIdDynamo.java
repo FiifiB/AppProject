@@ -26,19 +26,16 @@ public class AddIdDynamo extends AsyncTask<String, Void, String> {
 	private static String tableName = "Venues";
 	private static String VenueName;
 	
-	
+	/**
+	 * methed is used to get the name of the venue needed to store id in
+	 * @param attributeList
+	 * This Map contains information about an item in the DataBase.
+	 */
 	private static void getNameItem(Map<String, AttributeValue> attributeList) {
         for (Map.Entry<String, AttributeValue> item : attributeList.entrySet()) {
             String attributeName = item.getKey();
             AttributeValue value = item.getValue();
-            VenueName = item.getValue().getS();
-            System.out.println(VenueName);
-//            System.out.println(attributeName + " "
-//                    + (value.getS() == null ? "" : "S=[" + value.getS() + "]")
-//                    + (value.getN() == null ? "" : "N=[" + value.getN() + "]")	                   
-//                    + (value.getSS() == null ? "" : "SS=[" + value.getSS() + "]")
-//                    + (value.getNS() == null ? "" : "NS=[" + value.getNS() + "]\n"));
-                    
+            VenueName = item.getValue().getS();            
         }
     }
 	
