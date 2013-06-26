@@ -1,8 +1,5 @@
 package com.AuthorizationAndStore;
 
-import java.io.IOException;
-
-import android.R;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -16,12 +13,7 @@ import android.webkit.WebViewClient;
 import android.widget.Toast;
 
 import com.Topspot.ContainActivity;
-import com.google.api.client.auth.oauth2.draft10.AccessTokenRequest.AuthorizationCodeGrant;
-import com.google.api.client.auth.oauth2.draft10.AccessTokenResponse;
 import com.google.api.client.auth.oauth2.draft10.AuthorizationRequestUrl;
-import com.google.api.client.http.HttpResponseException;
-import com.google.api.client.http.javanet.NetHttpTransport;
-import com.google.api.client.json.jackson.JacksonFactory;
 
 public class OAuthAccessTokenActivity extends Activity {
 

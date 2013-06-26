@@ -165,21 +165,28 @@ public class FriendsActivity extends ListActivity {
 				int count = 0;
 				for (String s: UserFriendsID){
 					String [] IdandName = s.split(",");
-					for (String t: IdsInVenues) {	
-						int o = t.lastIndexOf(",");
-						String ven = t.substring(o+1);
-						String usid = t.substring(0, o);
-						System.out.println(ven + usid);
-						String usids = usid.replaceAll("\\s","");
-						System.out.println(usids);
-						JSONArray usidg = new JSONArray(usids);
+					for (String t: IdsInVenues) {
+						String[] IdandNameInDB = t.split(":");
+//						int o = t.lastIndexOf(",");
+//						String ven = t.substring(o+1);
+//						String usid = t.substring(0, o);
+//						System.out.println(ven + usid);
+//						String usids = usid.replaceAll("\\s","");
+//						System.out.println(usids);
+//						JSONArray usidg = new JSONArray(usids);
 						
-						System.out.println("JsonA:"+usidg.length());
-						ArrayList<String> ids = new ArrayList<String>();
-						for(int d = 0; d < usidg.length(); d++){
-							ids.add(usidg.get(d).toString());
-							System.out.println(usidg.get(d).toString());
+//						System.out.println("JsonA:"+usidg.length());
+//						ArrayList<String> ids = new ArrayList<String>();
+//						for(int d = 0; d < usidg.length(); d++){
+//							ids.add(usidg.get(d).toString());
+//							System.out.println(usidg.get(d).toString());
+						if (IdandNameInDB[0].equals(IdandName[0])){
+							 UserAndVen userandvenue = new UserAndVen();
+							 userandvenue.txtfriendName = IdandName[1];
+							 userandvenue.Venue = IdandNameInDB[1];
+							 UserFriends.add(userandvenue);
 						}
+						
 						
 //						String [] IdandVenue = t.split(o);
 //						Pattern p = Pattern.compile("(\\d+)");
@@ -195,18 +202,18 @@ public class FriendsActivity extends ListActivity {
 //						    
 //						}
 //						System.out.println("mgroup: "+id);
-						for(String v: ids){
-							if(v != null){
-								if (v.equals(IdandName[0])){
-									 UserAndVen userandvenue = new UserAndVen();
-									 userandvenue.txtfriendName = IdandName[1];
-									 userandvenue.Venue = ven;
-									 UserFriends.add(userandvenue);
-									 
-									 
-								}
-							}
-						}
+//						for(String v: ids){
+//							if(v != null){
+//								if (v.equals(IdandName[0])){
+//									 UserAndVen userandvenue = new UserAndVen();
+//									 userandvenue.txtfriendName = IdandName[1];
+//									 userandvenue.Venue = ven;
+//									 UserFriends.add(userandvenue);
+//									 
+//									 
+//								}
+//							}
+//						}
 					}
 				}
 				
@@ -279,18 +286,20 @@ public class FriendsActivity extends ListActivity {
 		public String Venue;
 	}
 	public void getUsersAndLocation(){
-		try {
-			IdsInVenues.clear();
+		IdsInVenues.clear();
 			
-			IdsInVenues = new GetUserIdsDynamo().execute().get();	
-			System.out.println("IdsInVenues: "+IdsInVenues.size());
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (ExecutionException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+			try {
+				IdsInVenues = new GetUserIdsDynamo().execute().get();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (ExecutionException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}	
+			for (String t: IdsInVenues){
+				System.out.println(t);
+			}
 		
 	}
 

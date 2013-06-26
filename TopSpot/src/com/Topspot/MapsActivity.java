@@ -266,10 +266,10 @@ public class MapsActivity extends MapActivity {
 			String key = LocationManager.KEY_PROXIMITY_ENTERING;
 			Boolean entering = intent.getBooleanExtra(key, false);			
 			if(entering){
-				new AddIdDynamo().execute(Location,UserId);
+//				new AddIdDynamo().execute(Location,UserId);
 				Toast.makeText(getApplicationContext(), "im entering", Toast.LENGTH_LONG).show();
 			}else {
-				new RemoveIdDynamo().execute(Location,UserId);
+//				new RemoveIdDynamo().execute(Location,UserId);
 				Toast.makeText(getApplicationContext(), "im exiting", Toast.LENGTH_LONG).show();
 			}
 						
@@ -305,15 +305,15 @@ public class MapsActivity extends MapActivity {
 	}
 	public Integer getPeople(String Location){
 		Integer count = null;		
-		try {
-			count = new GetNoOfPeopleDynamo().execute(Location).get();			
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (ExecutionException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+//		try {
+//			count = new GetNoOfPeopleDynamo().execute(Location).get();			
+//		} catch (InterruptedException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		} catch (ExecutionException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
 		return count;
 	}
 	private void registerIntents(LocationManager locManager) {
