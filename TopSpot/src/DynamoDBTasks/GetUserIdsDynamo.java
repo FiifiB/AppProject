@@ -3,6 +3,7 @@ package DynamoDBTasks;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -24,10 +25,10 @@ import android.os.AsyncTask;
  * @author Fiifi
  *
  */
-public class GetUserIdsDynamo extends AsyncTask<Void, Void, ArrayList<String>>{
+public class GetUserIdsDynamo extends AsyncTask<Void, Void, HashSet<String>>{
 	private static AmazonDynamoDBClient client;
 	private static String tableName = "Venues";
-	private ArrayList<String> UserId = new ArrayList<String>();
+	private HashSet<String> UserId = new HashSet<String>();
 	
 	private void printItem(Map<String, AttributeValue> attributeList) {
 		
@@ -44,7 +45,7 @@ public class GetUserIdsDynamo extends AsyncTask<Void, Void, ArrayList<String>>{
 	
 
 	@Override
-	protected ArrayList<String> doInBackground(Void... params) {
+	protected HashSet<String> doInBackground(Void... params) {
 		AWSCredentials credentials = null;
 		try {
 			credentials = new PropertiesCredentials(

@@ -1,8 +1,18 @@
 package com.Topspot;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.lang.reflect.Array;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import DynamoDBTasks.AddIdDynamo;
 import DynamoDBTasks.GetLocationsDynamo;
@@ -16,12 +26,14 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
-import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
@@ -29,11 +41,12 @@ import android.util.Log;
 import android.view.Menu;
 import android.widget.Toast;
 
-import com.AuthorizationAndStore.CredentialStore;
-import com.AuthorizationAndStore.OAuth2ClientCredentials;
 import com.AuthorizationAndStore.SharedPreferencesCredentialStore;
 import com.example.topspot.R;
-import com.google.api.client.auth.oauth2.draft10.AccessTokenResponse;
+import com.facebook.android.AsyncFacebookRunner;
+import com.facebook.android.AsyncFacebookRunner.RequestListener;
+import com.facebook.android.Facebook;
+import com.facebook.android.FacebookError;
 import com.mapquest.android.maps.GeoPoint;
 import com.mapquest.android.maps.MapActivity;
 import com.mapquest.android.maps.MapController;
@@ -42,14 +55,12 @@ import com.mapquest.android.maps.MyLocationOverlay;
 import com.mapquest.android.maps.Overlay;
 import com.mapquest.android.maps.OverlayItem;
 
-import fi.foyt.foursquare.api.FoursquareApi;
-import fi.foyt.foursquare.api.FoursquareApiException;
-import fi.foyt.foursquare.api.Result;
-import fi.foyt.foursquare.api.entities.CompactVenue;
-import fi.foyt.foursquare.api.entities.VenuesSearchResult;
-import fi.foyt.foursquare.api.io.DefaultIOHandler;
 
+@SuppressWarnings("deprecation")
 public class MapsActivity extends MapActivity {
+	private Facebook fb;
+	private String APP_ID;
+	private AsyncFacebookRunner myAsyncRunner;
 	private MapView mapview;
 	private MapController mcontroller;
 	private Location myLoc;
@@ -57,30 +68,38 @@ public class MapsActivity extends MapActivity {
 	private static int time = 50000;
 	private static int distance = 50;
 	private Criteria criteria = new Criteria();
-	private FoursquareApi foursquareApi;
 	private SharedPreferences prefs;
-	private CredentialStore credentialStore;
 	private String UserId ;
-	private double lat;
-	private double lng;
 	private List<Overlay> mapOverlays;
+	private ArrayList<FBLocationObj> FbLocationObj= new ArrayList<FBLocationObj>();
 	private VenuesOverlay locOverlay;
 	private MyLocationOverlay myLocationOverlay;
-	private CompactVenue[] compactVenues ;
 	private List<String> RegisteredVeneus = new ArrayList<String>();
 	private BroadcastReceiver proxiReceiver;
 	private IntentFilter filter;
 	private static final String TREASURE_PROXIMITY_ALERT = "com.topspot.action.proximityalert";
+	private Bitmap pic = null;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_maps);
 		this.prefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-		this.credentialStore = new SharedPreferencesCredentialStore(prefs);
+		new SharedPreferencesCredentialStore(prefs);
+		APP_ID = getString(R.string.APP_ID);
+		fb = new Facebook(APP_ID);
+		myAsyncRunner = new AsyncFacebookRunner(fb);
+		String access_token = prefs.getString("FBAccessToken", null);
+		long expires = prefs.getLong("FBAccessExpires", 0);
+		if (access_token != null && expires != 0 ){
+			fb.setAccessToken(access_token);
+			fb.setAccessExpires(expires);
+		}else{
+			Intent intent = new Intent(MapsActivity.this,LoginActivity.class);
+			finish();
+			startActivity(intent);
+		}
 		
-		//Get access token from the shared preferences 
-		AccessTokenResponse accessTokenResponse = credentialStore.read();
 		
 		//get the location manageer
 		locationManager = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
@@ -101,6 +120,7 @@ public class MapsActivity extends MapActivity {
 		mapOverlays.add(myLocationOverlay);
 		Drawable drawable = this.getResources().getDrawable(R.drawable.androidmarker);
 		locOverlay = new VenuesOverlay(drawable,this);
+		
 		
 		
 		
@@ -137,11 +157,15 @@ public class MapsActivity extends MapActivity {
 		//Launches thread to get Locations in the Database 
 		getRegisteredLocation();
 		
+		getFacebookID();
+		
+		//populates the map with places near your location
 		updateWithNewLocation(myLoc);
-		new getUserId().execute();
+
+		
+		
 		
 		}else if(!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)){
-			System.out.println("no GPS found..........");
 			AlertDialog.Builder notice = new AlertDialog.Builder(this);
 			notice.setTitle("Turn on GPS")
 			.setMessage("Please turn on GPS Location to use the app")
@@ -173,85 +197,95 @@ public class MapsActivity extends MapActivity {
 		return false;
 	}
 	
-	//Gets foursquare API to perform tasks
-	public FoursquareApi getFoursquareApi() {
-		if (this.foursquareApi==null) {
-			this.prefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-			CredentialStore credentialStore = new SharedPreferencesCredentialStore(prefs);
+	//Get Facebook Id
+	private void getFacebookID(){
+		myAsyncRunner.request("me", new RequestListener() {
 			
-			AccessTokenResponse accessTokenResponse = credentialStore.read();
-			this.foursquareApi = new FoursquareApi(OAuth2ClientCredentials.CLIENT_ID,
-					OAuth2ClientCredentials.CLIENT_SECRET,
-					OAuth2ClientCredentials.REDIRECT_URI,
-					prefs.getString("AccessToken", null), new DefaultIOHandler());
-		}
-		return this.foursquareApi;
-		
-	}
-	private class getUserId extends AsyncTask<String, Void, Void>{
-
-		@Override
-		protected Void doInBackground(String... params) {
-			try {
-				UserId = getFoursquareApi().user("self").getResult().getId();
-				System.out.println("my UserId: "+UserId);
-			} catch (FoursquareApiException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+			@Override
+			public void onMalformedURLException(MalformedURLException e, Object state) {
+				// TODO Auto-generated method stub
+				
 			}
-			return null;
-		}
-		
+			
+			@Override
+			public void onIOException(IOException e, Object state) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			@Override
+			public void onFileNotFoundException(FileNotFoundException e, Object state) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			@Override
+			public void onFacebookError(FacebookError e, Object state) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			@Override
+			public void onComplete(String response, Object state) {
+				Log.d("Profile", response);
+	            String json = response;
+	            try {
+	                JSONObject profile = new JSONObject(json);
+	                // getting id of the user
+	                UserId = profile.getString("id");
+	                
+	 
+	                runOnUiThread(new Runnable() {
+	 
+	                    @Override
+	                    public void run() {
+	                        Toast.makeText(getApplicationContext(), "User Id: " + UserId, Toast.LENGTH_LONG).show();
+	                    }
+	 
+	                });
+	 
+	            } catch (JSONException e) {
+	                e.printStackTrace();
+	            }
+				
+			}
+		});
 	}
-	
 	
 	//Gets Nearby Venues That have been registered with this app
-	private class GetNearbyVenues extends AsyncTask<Uri, Void, Void> {
+	private class GetNearbyVenues extends AsyncTask<Void, Void, Void> {
 
 		@Override
-		protected Void doInBackground(Uri... params) {
-
-			try {				
-				Log.i(Constants.TAG, "Retrieving places at " + lat + "," + lng);
-				Result<VenuesSearchResult> venues = getFoursquareApi().venuesSearch(
-						lat + "," + lng, null, null, null, null, null, null,
-						null, null, null, null);				
-				if (venues.getMeta().getCode()==200){
-				compactVenues = venues.getResult().getVenues();
-				System.out.println("success compact venue");
-				Log.i(Constants.TAG, "found " + compactVenues.length
-						+ " places");					
-				
-				
-				}else{System.out.println("cant retrieve venues" + venues.getMeta().getCode() + venues.getMeta().getErrorDetail());}				
-				
-				
-			} catch (Exception ex) {
-				Log.e(Constants.TAG, "Error retrieving venues", ex);
-			}
+		protected Void doInBackground(Void... params) {
+			getFBPlacesNearby(myLoc);
 			return null;
 		}
 		
 		@Override
 		protected void onPostExecute(Void result) {
-			for (CompactVenue compactVenue : compactVenues) {					
-				
-				for(String s: RegisteredVeneus){
-					String[]locat = s.split(",");
-					if ((compactVenue.getLocation().getLat().toString()).contentEquals(locat[0]) && (compactVenue.getLocation().getLng().toString()).contentEquals(locat[1])){							
-						Double lat =compactVenue.getLocation().getLat()*1E6;
-						Double lng =compactVenue.getLocation().getLng()*1E6;
-						GeoPoint p = new GeoPoint(lat.intValue(), lng.intValue());
-						double lclat = compactVenue.getLocation().getLat();
-						double lclng = compactVenue.getLocation().getLng();
-						String Location = lclat+","+lclng;
+			for (String Rvenue: RegisteredVeneus){
+				for (int i = 0; i < FbLocationObj.size(); i++){
+					//Compares Lat and Lon in Database and FB Places to see if they match
+					if (Rvenue.equals(FbLocationObj.get(i).getLocation())){
+						String[] LatLon = Rvenue.split(",");
+						
+						//creates Geopoint to add location to the map
+						GeoPoint p = 
+						new GeoPoint(Double.parseDouble(LatLon[0])*1E6,Double.parseDouble(LatLon[1])*1E6);
+						
+						//gets the number of people in that Place
 						Integer count;
-						count = getPeople(Location);
-						String message = "No. of people at "+compactVenue.getName()+": "+count;
-						OverlayItem item = new OverlayItem(p, compactVenue.getName(), message);
+						count = getPeople(FbLocationObj.get(i).getLocation());
+						
+						//create the item to add to the map
+						String message = "No. of people at "+FbLocationObj.get(i).getName()+": "+count;
+						OverlayItem item = new OverlayItem(p, FbLocationObj.get(i).getName(), message);
+						Drawable place_img = new BitmapDrawable(FbLocationObj.get(i).getImg());
+						item.setMarker(place_img);						
 						locOverlay.addOverlay(item);
+						
 					}
-				}									
+				}
 			}
 		}
 
@@ -290,6 +324,7 @@ public class MapsActivity extends MapActivity {
 					}
 				});	
 				AlertDialog alert = notice.create();
+				alert.show();
 			}
 			
 		}
@@ -302,10 +337,149 @@ public class MapsActivity extends MapActivity {
 	};
 	
 	private void updateWithNewLocation (Location location){
-		lat = myLoc.getLatitude();
-		lng = myLoc.getLongitude();
+		myLoc.getLatitude();
+		myLoc.getLongitude();
 		new GetNearbyVenues().execute();
 		mapOverlays.add(locOverlay);
+	}
+
+	//Get Facebook Locations nearby and their pictures
+	
+	private void getFBPlacesNearby(Location loc){
+		String locat = loc.getLatitude()+","+loc.getLongitude();		
+		Bundle params = new Bundle();
+		params.putString("type", "place");
+		params.putString("center", locat);
+		params.putString("distance", "800");
+		params.putString("fields", "location,name,id");
+		
+		myAsyncRunner.request("search",params, new RequestListener() {
+			
+			@Override
+			public void onMalformedURLException(MalformedURLException e, Object state) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			@Override
+			public void onIOException(IOException e, Object state) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			@Override
+			public void onFileNotFoundException(FileNotFoundException e, Object state) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			@Override
+			public void onFacebookError(FacebookError e, Object state) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			@Override
+			public void onComplete(String response, Object state) {
+				String res = response;
+				JSONArray locations = null;
+				
+				try {
+					JSONObject data = new JSONObject(res);
+					locations = data.getJSONArray("data");
+					if (locations ==null){
+						System.out.println(data.optJSONArray("data"));
+					}
+				} catch (JSONException e2) {
+					e2.printStackTrace();
+				}
+				
+				
+				//Goes through array of results from the fb request and
+				//creates and adds facebook location objects to an array.
+				for (int i = 0; i < locations.length(); i++) {
+					String Name = null;
+					String Location = null;
+//					Bitmap pic = null;
+					String id = null;
+					try {
+						JSONObject place = locations.getJSONObject(i);
+						
+						//Gets name of place
+						Name = place.getString("name");
+						
+						//Get Lat and Lon from JSON Object
+						JSONObject loc = place.getJSONObject("location");
+						Location = 
+							loc.getString("latitude")+","+loc.getString("longitude");
+						
+						//Gets picture of Place from FB
+						id = place.getString("id");
+					} catch (JSONException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+					
+					Bundle param = new Bundle();
+					param.putString("type", "normal");
+					
+					//Gets Picture from FB place Id
+					myAsyncRunner.request(id+"/picture",param, new RequestListener() {
+						
+						@Override
+						public void onMalformedURLException(MalformedURLException e, Object state) {
+							// TODO Auto-generated method stub
+							
+						}
+						
+						@Override
+						public void onIOException(IOException e, Object state) {
+							// TODO Auto-generated method stub
+							
+						}
+						
+						@Override
+						public void onFileNotFoundException(FileNotFoundException e, Object state) {
+							// TODO Auto-generated method stub
+							
+						}
+						
+						@Override
+						public void onFacebookError(FacebookError e, Object state) {
+							// TODO Auto-generated method stub
+							
+						}
+						
+						@Override
+						public void onComplete(String response, Object state) {
+							
+							try {
+								JSONObject locId = new JSONObject(response);
+								JSONObject data = locId.getJSONObject("data");
+								String url = data.getString("url");
+								URL imgUrl = new URL(url);
+								pic = BitmapFactory.decodeStream(imgUrl.openConnection().getInputStream());
+							} catch (JSONException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							} catch (MalformedURLException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							} catch (IOException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+							
+							
+						}
+					});
+					
+					FBLocationObj FBobj = new FBLocationObj(Name, Location, pic);
+					FbLocationObj.add(FBobj);
+				}
+				
+			}
+		});
 	}
 
 	public class ProximityIntentReceiver extends BroadcastReceiver {	
@@ -316,10 +490,10 @@ public class MapsActivity extends MapActivity {
 			String key = LocationManager.KEY_PROXIMITY_ENTERING;
 			Boolean entering = intent.getBooleanExtra(key, false);			
 			if(entering){
-//				new AddIdDynamo().execute(Location,UserId);
+				new AddIdDynamo().execute(Location,UserId);
 				Toast.makeText(getApplicationContext(), "im entering", Toast.LENGTH_LONG).show();
 			}else {
-//				new RemoveIdDynamo().execute(Location,UserId);
+				new RemoveIdDynamo().execute(Location,UserId);
 				Toast.makeText(getApplicationContext(), "im exiting", Toast.LENGTH_LONG).show();
 			}
 						
@@ -425,8 +599,34 @@ public class MapsActivity extends MapActivity {
 				}
 			});	
 			AlertDialog alert = notice.create();
+			alert.show();
 		}
 		
 	    }
+	
+	//Creates Facebook Location Object contain a Name its Location and picture
+	private class FBLocationObj{
+		private String Name;		
+		private String Location;
+		private Bitmap Img;
+		public FBLocationObj(String _Name, String _Location, Bitmap _img){
+			Name = _Name;
+			Location = _Location;
+			Img = _img;
+		}
+		
+		//Getters for all fields
+		public String getName() {
+			return Name;
+		}
+		public String getLocation() {
+			return Location;
+		}
+		
+		public Bitmap getImg() {
+			return Img;
+		}
+		
+	}
 
 }

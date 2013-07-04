@@ -1,15 +1,32 @@
 package com.Topspot;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import DynamoDBTasks.GetUserIdsDynamo;
+import android.R.drawable;
 import android.app.ListActivity;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
@@ -25,7 +42,12 @@ import android.widget.TextView;
 import com.AuthorizationAndStore.CredentialStore;
 import com.AuthorizationAndStore.OAuth2ClientCredentials;
 import com.AuthorizationAndStore.SharedPreferencesCredentialStore;
+import com.amazonaws.javax.xml.stream.xerces.util.URI;
 import com.example.topspot.R;
+import com.facebook.android.AsyncFacebookRunner;
+import com.facebook.android.AsyncFacebookRunner.RequestListener;
+import com.facebook.android.Facebook;
+import com.facebook.android.FacebookError;
 import com.google.api.client.auth.oauth2.draft10.AccessProtectedResource;
 import com.google.api.client.auth.oauth2.draft10.AccessProtectedResource.Method;
 import com.google.api.client.auth.oauth2.draft10.AccessTokenResponse;
@@ -44,13 +66,18 @@ import fi.foyt.foursquare.api.io.DefaultIOHandler;
  * @author Fiifi
  *
  */
+@SuppressWarnings("deprecation")
 public class FriendsActivity extends ListActivity {
+	private Facebook fb;
+	private String APP_ID;
+	private AsyncFacebookRunner myAsyncRunner;
+	private String UserId ;
 	private FoursquareApi foursquareApi;
 	private SharedPreferences prefs;
 	private CredentialStore credentialStore;
-	private List<String> UserFriendsID = new ArrayList<String>();
+	private HashSet<HashMap> UserFriendsID = new HashSet<HashMap>();
 	private List<UserAndVen> UserFriends = new ArrayList<UserAndVen>();
-	private List<String> IdsInVenues = new ArrayList<String>();	
+	private HashSet<String> IdsInVenues = new HashSet<String>();	
 	private String FOURSQUARE_API_ENDPOINT;
 
 	@Override
@@ -59,9 +86,19 @@ public class FriendsActivity extends ListActivity {
 		setContentView(R.layout.activity_friends);
 		this.prefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
 		this.credentialStore = new SharedPreferencesCredentialStore(prefs);
-		
-		//This is the https uri to get users friends id
-		FOURSQUARE_API_ENDPOINT = "https://api.foursquare.com/v2/users/self/friends?oauth_token="+prefs.getString("AccessToken", null);
+		APP_ID = getString(R.string.APP_ID);
+		fb = new Facebook(APP_ID);
+		myAsyncRunner = new AsyncFacebookRunner(fb);
+		String access_token = prefs.getString("FBAccessToken", null);
+		long expires = prefs.getLong("FBAccessExpires", 0);
+		if (access_token != null && expires != 0 ){
+			fb.setAccessToken(access_token);
+			fb.setAccessExpires(expires);
+		}else{
+			Intent intent = new Intent(FriendsActivity.this,LoginActivity.class);
+			finish();
+			startActivity(intent);
+		}
 		
 		
 		UserFriends.clear();
@@ -70,8 +107,7 @@ public class FriendsActivity extends ListActivity {
 		
 		getUsersAndLocation();
 		
-		//Starts the thread that gets the foursquare user id used to perform foursquare get friends tasks that 
-		new getUserId().execute();		
+		getFacebookFriends();
 		
 		//Starts the thread shows friends in the activity list adapter
 		new FriendsListRefresher().execute();
@@ -91,79 +127,121 @@ public class FriendsActivity extends ListActivity {
 		getMenuInflater().inflate(R.menu.friends, menu);
 		return true;
 	}
-	//gets api needed to perform calls
-	public FoursquareApi getFoursquareApi() {
-		if (this.foursquareApi==null) {
-			this.prefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-			CredentialStore credentialStore = new SharedPreferencesCredentialStore(prefs);
-			
-			AccessTokenResponse accessTokenResponse = credentialStore.read();
-			this.foursquareApi = new FoursquareApi(OAuth2ClientCredentials.CLIENT_ID,
-					OAuth2ClientCredentials.CLIENT_SECRET,
-					OAuth2ClientCredentials.REDIRECT_URI,
-					prefs.getString("AccessToken", null), new DefaultIOHandler());
-		}
-		return this.foursquareApi;
-		
-	}
-	private class getUserId extends AsyncTask<String, Void, Void>{
-
+	
+	public class friendRequest implements RequestListener{
 
 		@Override
-		protected Void doInBackground(String... params) {
+		public void onComplete(String response, Object state) {
+			JSONObject obj;
 			try {
-				performFoursquareIDCallUsingGoogleApiJavaClient();
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				obj = new JSONObject(response);
+					JSONArray data = obj.getJSONArray("data");
+			for (int i = 0; i < data.length(); i++) {
+				final HashMap<String, String> friend = new HashMap<String,String>();
+				JSONObject friendObj =data.getJSONObject(i);
+				String id = friendObj.getString("id");
+				friend.put("id", id) ;
+				friend.put("name", friendObj.getString("name")) ;
+				
+				//gets picture of friend
+				Bundle param = new Bundle();
+				param.putString("type", "normal");
+				myAsyncRunner.request(id+"/picture",param, new RequestListener() {
+					
+					@Override
+					public void onMalformedURLException(MalformedURLException e, Object state) {
+						// TODO Auto-generated method stub
+						
+					}
+					
+					@Override
+					public void onIOException(IOException e, Object state) {
+						// TODO Auto-generated method stub
+						
+					}
+					
+					@Override
+					public void onFileNotFoundException(FileNotFoundException e, Object state) {
+						// TODO Auto-generated method stub
+						
+					}
+					
+					@Override
+					public void onFacebookError(FacebookError e, Object state) {
+						// TODO Auto-generated method stub
+						
+					}
+					
+					@Override
+					public void onComplete(String response, Object state) {
+						
+						//Algorithm to handle extracting friend picture and saving it to
+						//FB friend object
+						JSONObject obj;
+						Bitmap pic = null;
+						try {
+							obj = new JSONObject(response);
+							JSONObject data = obj.getJSONObject("data");
+							URL url = new URL(data.getString("url"));
+							friend.put("img", url.toString());
+							UserFriendsID.add(friend);
+						} catch (JSONException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						} catch (MalformedURLException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						} catch (IOException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+						
+						
+					}
+				});
+				
 			}
-			return null;
+			} catch (JSONException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+		
+			
+		}
+
+		@Override
+		public void onIOException(IOException e, Object state) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		@Override
+		public void onFileNotFoundException(FileNotFoundException e,
+				Object state) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		@Override
+		public void onMalformedURLException(MalformedURLException e,
+				Object state) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		@Override
+		public void onFacebookError(FacebookError e, Object state) {
+			// TODO Auto-generated method stub
+			
 		}
 		
-	}
-	protected HttpRequestFactory createApiRequestFactory(HttpTransport transport, String accessToken) {
-		return transport.createRequestFactory(new AccessProtectedResource(accessToken, Method.AUTHORIZATION_HEADER) {
-			protected void onAccessToken(String accessToken) {
-				// Called when a new access token is issues. Not applicable for Foursquare as Foursquare access tokens are long-lived.");
-			};
-			
-			
-		});
 	}
 	
-	public void performFoursquareIDCallUsingGoogleApiJavaClient() throws Exception {
-		AccessTokenResponse accessTokenResponse = credentialStore.read();
-		HttpTransport transport = new NetHttpTransport();
-		GenericUrl genericUrl = new GenericUrl(FOURSQUARE_API_ENDPOINT);		
-		HttpRequest httpRequest = createApiRequestFactory(transport, accessTokenResponse.accessToken).buildGetRequest(
-				genericUrl);
-		
-		HttpResponse httpResponse = httpRequest.execute();
-		JSONObject object = new JSONObject(httpResponse.parseAsString());
-		JSONObject fourSquareResponse = (JSONObject) object.get("response");
-		JSONObject groups = (JSONObject) fourSquareResponse.get("friends");
-		JSONArray friends = groups.getJSONArray("items");
-		
-		
-		int id = 0;
-		String name;
-		String user;
-		
-		UserFriends.clear();
-		System.out.println(friends.length());
-		for (int i = 0; i < friends.length(); i++) {
-		    JSONObject row = friends.getJSONObject(i);
-		    id = row.getInt("id");
-		    name = row.getString("firstName");
-		    user = id+","+name;
-		    UserFriendsID.add(user);
-		    System.out.println(user);
-		}
-		System.out.println("UserFrID: " + UserFriendsID.size());
-		
-		
-				
+	private void getFacebookFriends(){
+		myAsyncRunner.request("me/friends", new friendRequest());
 	}
+
+
 	/**
 	 * This thread compares the ids in the venues with the users foursquare friends ids and
 	 * displays the ones that are in the venue and where they are in the activity list
@@ -174,24 +252,63 @@ public class FriendsActivity extends ListActivity {
 
 		@Override
 		protected Void doInBackground(Void... params) {
-
-			try {			
-				UserFriends.clear();				
-				for (String s: UserFriendsID){
-					String [] IdandName = s.split(",");
-					for (String t: IdsInVenues) {
-						String[] IdandNameInDB = t.split(":");					
-						if (IdandNameInDB[0].equals(IdandName[0])){
-							 UserAndVen userandvenue = new UserAndVen();
-							 userandvenue.txtfriendName = IdandName[1];
-							 userandvenue.Venue = IdandNameInDB[1];
-							 UserFriends.add(userandvenue);
-							}	
+			HashSet<String> tempId = new HashSet<String>();
+			Iterator<HashMap> FBsetIterator = UserFriendsID.iterator();
+			Iterator<String> DBsetIterator = IdsInVenues.iterator();
+			
+			while (FBsetIterator.hasNext()){
+				HashMap<String, String> FBfriend = FBsetIterator.next();
+				tempId.add(FBfriend.get("id"));
+			}			
+			
+			while (DBsetIterator.hasNext()){
+				String [] split = DBsetIterator.next().split(":");
+				if (tempId.contains(split[0])){
+					while(FBsetIterator.hasNext()){
+						HashMap<String, String> FBfriend = FBsetIterator.next();
+						if(FBfriend.containsValue(split[0])){
+							UserAndVen UserVen = new UserAndVen();
+							UserVen.txtfriendName = FBfriend.get("name");
+							UserVen.Venue = split[1];
+							URL url = null;
+							try {
+								url = new URL(FBfriend.get("url"));
+								Bitmap pic = BitmapFactory.decodeStream(url.openConnection().getInputStream());
+								UserVen.friendImg = new BitmapDrawable(pic);
+							} catch (MalformedURLException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							} catch (IOException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+							UserFriends.add(UserVen);
+							
+							
 						}
-					}					
-				} catch (Exception ex) {
-				Log.e(Constants.TAG, "Error retrieving venues", ex);
+					}
+				}
 			}
+			
+			
+
+//			try {			
+//				UserFriends.clear();				
+//				for (String s: UserFriendsID){
+//					String [] IdandName = s.split(",");
+//					for (String t: IdsInVenues) {
+//						String[] IdandNameInDB = t.split(":");					
+//						if (IdandNameInDB[0].equals(IdandName[0])){
+//							 UserAndVen userandvenue = new UserAndVen();
+//							 userandvenue.txtfriendName = IdandName[1];
+//							 userandvenue.Venue = IdandNameInDB[1];
+//							 UserFriends.add(userandvenue);
+//							}	
+//						}
+//					}					
+//				} catch (Exception ex) {
+//				Log.e(Constants.TAG, "Error retrieving venues", ex);
+//			}
 			return null;
 		}		
 		@Override
@@ -263,6 +380,7 @@ public class FriendsActivity extends ListActivity {
 	static class UserAndVen {
 		public String txtfriendName;
 		public String Venue;
+		public Drawable friendImg;
 	}
 	
 	/**
@@ -286,5 +404,6 @@ public class FriendsActivity extends ListActivity {
 			}
 		
 	}
-
+	
+	
 }

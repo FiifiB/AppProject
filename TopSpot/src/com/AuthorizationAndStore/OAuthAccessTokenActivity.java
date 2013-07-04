@@ -62,7 +62,7 @@ final String TAG = getClass().getName();
         			
                     Log.v(TAG, "OAuth complete, token: [" + accesstoken + "].");
                 	
-                    Toast.makeText(getApplicationContext(), "Token: " + accesstoken, Toast.LENGTH_SHORT).show();
+//                    Toast.makeText(getApplicationContext(), "Token: " + accesstoken, Toast.LENGTH_SHORT).show();
                 }
             }
         	@Override  
