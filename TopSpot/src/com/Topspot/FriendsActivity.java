@@ -14,6 +14,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
+import org.apache.http.HttpEntity;
+import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.DefaultHttpClient;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -21,6 +26,7 @@ import org.json.JSONObject;
 import DynamoDBTasks.GetUserIdsDynamo;
 import android.R.drawable;
 import android.app.ListActivity;
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
@@ -35,6 +41,7 @@ import android.view.Menu;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.ImageView;
 import android.widget.RadioButton;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
@@ -105,9 +112,16 @@ public class FriendsActivity extends ListActivity {
 		UserFriendsID.clear();
 		IdsInVenues.clear();
 		
+		UserAndVen user = new UserAndVen();
+		user.friendImg = getResources().getDrawable(R.drawable.mefb);
+		user.txtfriendName = "Fiifi Botchway";
+		user.Venue = "Marlowe Academy";
+		UserFriends.add(user);
+		//Gets the people in every location in the database
 		getUsersAndLocation();
 		
-		getFacebookFriends();
+		//gets the ids of users facebook friends
+//		getFacebookFriends();
 		
 		//Starts the thread shows friends in the activity list adapter
 		new FriendsListRefresher().execute();
@@ -238,8 +252,62 @@ public class FriendsActivity extends ListActivity {
 	}
 	
 	private void getFacebookFriends(){
-		myAsyncRunner.request("me/friends", new friendRequest());
+		Bitmap img;
+		JSONObject obj;
+			try {
+				String response = fb.request("me/friends");
+				obj = new JSONObject(response);
+				JSONArray data = obj.getJSONArray("data");
+					for (int i = 0; i < data.length(); i++) {
+						HashMap friend = new HashMap();
+						JSONObject friendObj =data.getJSONObject(i);
+						String id = friendObj.getString("id");
+						friend.put("id", id) ;
+						friend.put("name", friendObj.getString("name")) ;
+						
+						//gets picture of friend
+						img = getFBpic(id);
+						friend.put("img", img);
+				
+					}
+			} catch (JSONException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (MalformedURLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+				
+		
+
 	}
+	
+	private Bitmap getFBpic(String id){
+		Bitmap img = null;
+		String uri = 
+				"https://graph.facebook.com/"+id+"/picture?type=large";
+			     HttpClient httpclient = new DefaultHttpClient();			     
+			     HttpGet httpget = new HttpGet(uri);
+			     org.apache.http.HttpResponse response = null;				     
+				try {
+					response = httpclient.execute(httpget);						
+					HttpEntity entity = response.getEntity();
+					img = BitmapFactory.decodeStream(entity.getContent());
+				} catch (ClientProtocolException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+		
+		return img;
+	}
+	
+	
 
 
 	/**
@@ -249,9 +317,21 @@ public class FriendsActivity extends ListActivity {
 	 *
 	 */
 	private class FriendsListRefresher extends AsyncTask<Void, Void, Void> {
-
+		
+		private ProgressDialog pd;
+        @Override
+        protected void onPreExecute() {
+                 pd = new ProgressDialog(FriendsActivity.this);
+                 pd.setTitle("Processing Friends...");
+                 pd.setMessage("Retrieving friends in venues. Please wait........");
+                 pd.setCancelable(false);
+                 pd.setIndeterminate(true);
+                 pd.show();
+        }
+        
 		@Override
 		protected Void doInBackground(Void... params) {
+			getFacebookFriends();
 			HashSet<String> tempId = new HashSet<String>();
 			Iterator<HashMap> FBsetIterator = UserFriendsID.iterator();
 			Iterator<String> DBsetIterator = IdsInVenues.iterator();
@@ -271,44 +351,15 @@ public class FriendsActivity extends ListActivity {
 							UserVen.txtfriendName = FBfriend.get("name");
 							UserVen.Venue = split[1];
 							URL url = null;
-							try {
-								url = new URL(FBfriend.get("url"));
-								Bitmap pic = BitmapFactory.decodeStream(url.openConnection().getInputStream());
-								UserVen.friendImg = new BitmapDrawable(pic);
-							} catch (MalformedURLException e) {
-								// TODO Auto-generated catch block
-								e.printStackTrace();
-							} catch (IOException e) {
-								// TODO Auto-generated catch block
-								e.printStackTrace();
-							}
-							UserFriends.add(UserVen);
+							//								url = new URL(FBfriend.get("url"));
+//								Bitmap pic = BitmapFactory.decodeStream(url.openConnection().getInputStream());
+							UserVen.friendImg = new BitmapDrawable(FBfriend.get("img"));
 							
 							
 						}
 					}
 				}
 			}
-			
-			
-
-//			try {			
-//				UserFriends.clear();				
-//				for (String s: UserFriendsID){
-//					String [] IdandName = s.split(",");
-//					for (String t: IdsInVenues) {
-//						String[] IdandNameInDB = t.split(":");					
-//						if (IdandNameInDB[0].equals(IdandName[0])){
-//							 UserAndVen userandvenue = new UserAndVen();
-//							 userandvenue.txtfriendName = IdandName[1];
-//							 userandvenue.Venue = IdandNameInDB[1];
-//							 UserFriends.add(userandvenue);
-//							}	
-//						}
-//					}					
-//				} catch (Exception ex) {
-//				Log.e(Constants.TAG, "Error retrieving venues", ex);
-//			}
 			return null;
 		}		
 		@Override
@@ -316,6 +367,7 @@ public class FriendsActivity extends ListActivity {
 			
 			//method used to set friends in the list
 			setListAdapter(new TableAdapter(UserFriends));
+			pd.dismiss();
 		}
 	}
 	
@@ -332,15 +384,17 @@ public class FriendsActivity extends ListActivity {
 		TableAdapter(List<UserAndVen> list) {
 			super(FriendsActivity.this, R.layout.places_list_row, list);					
 		}
-
+		
+		
 		public View getView(int position, View convertView, ViewGroup parent) {
 			ViewHolder holder = null;
-			
+			//Makes sure we have a view to work with
 			if (convertView == null) {
 				convertView = getLayoutInflater().inflate(R.layout.places_list_row, parent, false);
 				holder = new ViewHolder();
 				holder.txtfriendName = (TextView) convertView.findViewById(R.id.row_placename);
 				holder.txtPlaceAddress = (TextView) convertView.findViewById(R.id.row_placeaddress);
+				holder.friendPic = (ImageView) convertView.findViewById(R.id.row_pic);
 				holder.layout = (RelativeLayout) convertView.findViewById(R.id.row_layout);
 				convertView.setTag(holder);
 			} else {
@@ -352,7 +406,8 @@ public class FriendsActivity extends ListActivity {
 			try {
 				holder.txtfriendName.setText(Users.txtfriendName);
 				if (Users.Venue != null && Users.Venue.length() > 0) {
-					holder.txtPlaceAddress.setText("At "+Users.Venue + " Now");
+					holder.txtPlaceAddress.setText("Is at "+Users.Venue + " Now");
+					holder.friendPic.setImageDrawable(Users.friendImg);
 				} else {
 					holder.txtPlaceAddress.setText("no_friends_info_found");
 				}
@@ -368,6 +423,7 @@ public class FriendsActivity extends ListActivity {
 	static class ViewHolder {
 		TextView txtfriendName;
 		TextView txtPlaceAddress;
+		ImageView friendPic;
 		RadioButton radio;
 		RelativeLayout layout;
 	}

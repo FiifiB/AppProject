@@ -9,6 +9,7 @@ import com.example.topspot.R;
 import com.facebook.Session;
 import com.facebook.Session.NewPermissionsRequest;
 import com.facebook.SessionState;
+import com.facebook.android.AsyncFacebookRunner;
 import com.facebook.android.DialogError;
 import com.facebook.android.Facebook;
 import com.facebook.android.Facebook.DialogListener;
@@ -31,6 +32,7 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.Toast;
 
 /**
@@ -42,6 +44,7 @@ import android.widget.Toast;
 public class LoginActivity extends Activity {
 	private Facebook fb;
 	private String APP_ID;
+	private AsyncFacebookRunner myAsyncRunner;
 	private SharedPreferences prefs;
 	private String[] permissions ={"user_location","user_checkins","user_status","friends_online_presence"}; 
 	
@@ -52,6 +55,7 @@ public class LoginActivity extends Activity {
 		APP_ID = getString(R.string.APP_ID);
 		this.prefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
 		fb = new Facebook(APP_ID);
+		myAsyncRunner = new AsyncFacebookRunner(fb);
 		String access_token = prefs.getString("FBAccessToken", null);
 		long expires = prefs.getLong("FBAccessExpires", 0);
 		

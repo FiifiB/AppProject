@@ -2,24 +2,17 @@ package com.Topspot;
 
 import java.util.ArrayList;
 
-import com.mapquest.android.maps.ItemizedOverlay;
-import com.mapquest.android.maps.OverlayItem;
-
-
+import com.google.android.maps.ItemizedOverlay;
+import com.google.android.maps.OverlayItem;
 
 import android.app.AlertDialog;
 import android.content.Context;
 import android.graphics.drawable.Drawable;
-import android.view.View;
-import android.view.View.OnClickListener;
-import android.widget.TextView;
-
 
 
 public class VenuesOverlay extends ItemizedOverlay {
 	private ArrayList<OverlayItem> myOverlays = new ArrayList<OverlayItem>();
-	Context mContext;
-	
+	Context mContext;	
 /**
  * This construct sets the centre-point at the
  *  bottom of the image to be the point at which it's attached to the 
@@ -28,8 +21,7 @@ public class VenuesOverlay extends ItemizedOverlay {
  */
 	public VenuesOverlay(Drawable defaultMarker) {
 		super(boundCenterBottom(defaultMarker));		
-	}
-	
+	}	
 /**
  * This passes the defaultMarker up to the default constructor to bound its
  *  coordinates and then initialises mContext with the given Context
@@ -38,7 +30,8 @@ public class VenuesOverlay extends ItemizedOverlay {
  */
 	public VenuesOverlay(Drawable defaultMarker, Context context) {
 		super(boundCenterBottom(defaultMarker));
-		mContext = context;		
+		mContext = context;	
+		populate();
 	}
 /**
  * When the populate() method executes, this method is called to retrieve a 
