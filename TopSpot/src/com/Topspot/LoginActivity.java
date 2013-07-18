@@ -17,6 +17,7 @@ import com.facebook.android.FacebookError;
 
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.app.ActionBar;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -52,6 +53,8 @@ public class LoginActivity extends Activity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_login);
+		ActionBar actionBar = getActionBar();
+		actionBar.hide();
 		APP_ID = getString(R.string.APP_ID);
 		this.prefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
 		fb = new Facebook(APP_ID);
@@ -62,7 +65,7 @@ public class LoginActivity extends Activity {
 		if (access_token != null && expires != 0 ){
 			fb.setAccessToken(access_token);
 			fb.setAccessExpires(expires);
-			Intent intent = new Intent(LoginActivity.this,ContainActivity.class);
+			Intent intent = new Intent(LoginActivity.this,MapsActivity.class);
 			finish();
 			startActivity(intent);
 		}
@@ -99,7 +102,7 @@ public class LoginActivity extends Activity {
 							editor.putLong("FBAccessExpires", fb.getAccessExpires());
 							editor.commit();
 							
-							Intent intent = new Intent(LoginActivity.this,ContainActivity.class);
+							Intent intent = new Intent(LoginActivity.this,MapsActivity.class);
 							finish();
 							startActivity(intent);
 							

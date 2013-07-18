@@ -1,17 +1,13 @@
 package com.Topspot;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
 import org.apache.http.HttpEntity;
@@ -24,7 +20,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import DynamoDBTasks.GetUserIdsDynamo;
-import android.R.drawable;
+import android.app.ActionBar;
 import android.app.ListActivity;
 import android.app.ProgressDialog;
 import android.content.Intent;
@@ -36,8 +32,8 @@ import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.util.Log;
 import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
@@ -46,27 +42,9 @@ import android.widget.RadioButton;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
-import com.AuthorizationAndStore.CredentialStore;
-import com.AuthorizationAndStore.OAuth2ClientCredentials;
-import com.AuthorizationAndStore.SharedPreferencesCredentialStore;
-import com.amazonaws.javax.xml.stream.xerces.util.URI;
 import com.example.topspot.R;
 import com.facebook.android.AsyncFacebookRunner;
-import com.facebook.android.AsyncFacebookRunner.RequestListener;
 import com.facebook.android.Facebook;
-import com.facebook.android.FacebookError;
-import com.google.api.client.auth.oauth2.draft10.AccessProtectedResource;
-import com.google.api.client.auth.oauth2.draft10.AccessProtectedResource.Method;
-import com.google.api.client.auth.oauth2.draft10.AccessTokenResponse;
-import com.google.api.client.http.GenericUrl;
-import com.google.api.client.http.HttpRequest;
-import com.google.api.client.http.HttpRequestFactory;
-import com.google.api.client.http.HttpResponse;
-import com.google.api.client.http.HttpTransport;
-import com.google.api.client.http.javanet.NetHttpTransport;
-
-import fi.foyt.foursquare.api.FoursquareApi;
-import fi.foyt.foursquare.api.io.DefaultIOHandler;
 
 /**
  * This Activity is a list containing your friends that are in registered app venues
@@ -79,30 +57,34 @@ public class FriendsActivity extends ListActivity {
 	private String APP_ID;
 	private AsyncFacebookRunner myAsyncRunner;
 	private String UserId ;
-	private FoursquareApi foursquareApi;
 	private SharedPreferences prefs;
-	private CredentialStore credentialStore;
 	private HashSet<HashMap> UserFriendsID = new HashSet<HashMap>();
 	private List<UserAndVen> UserFriends = new ArrayList<UserAndVen>();
 	private HashSet<String> IdsInVenues = new HashSet<String>();	
-	private String FOURSQUARE_API_ENDPOINT;
-
+	
 	@Override
-	protected void onCreate(Bundle savedInstanceState) {
+	protected void onCreate(Bundle savedInstanceState){
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_friends);
 		this.prefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-		this.credentialStore = new SharedPreferencesCredentialStore(prefs);
 		APP_ID = getString(R.string.APP_ID);
 		fb = new Facebook(APP_ID);
 		myAsyncRunner = new AsyncFacebookRunner(fb);
 		String access_token = prefs.getString("FBAccessToken", null);
 		long expires = prefs.getLong("FBAccessExpires", 0);
+		
+		ActionBar actionBar = getActionBar();
+		actionBar.setHomeButtonEnabled(true);
+	    actionBar.setDisplayHomeAsUpEnabled(true);
+	    actionBar.setDisplayShowTitleEnabled(false);
+		actionBar.setIcon(R.drawable.whrt2golabel);
+	    
+	    
 		if (access_token != null && expires != 0 ){
 			fb.setAccessToken(access_token);
 			fb.setAccessExpires(expires);
 		}else{
-			Intent intent = new Intent(FriendsActivity.this,LoginActivity.class);
+			Intent intent = new Intent(this,LoginActivity.class);
 			finish();
 			startActivity(intent);
 		}
@@ -117,11 +99,9 @@ public class FriendsActivity extends ListActivity {
 		user.txtfriendName = "Fiifi Botchway";
 		user.Venue = "Marlowe Academy";
 		UserFriends.add(user);
+		
 		//Gets the people in every location in the database
 		getUsersAndLocation();
-		
-		//gets the ids of users facebook friends
-//		getFacebookFriends();
 		
 		//Starts the thread shows friends in the activity list adapter
 		new FriendsListRefresher().execute();
@@ -136,119 +116,23 @@ public class FriendsActivity extends ListActivity {
 		
 
 	@Override
-	public boolean onCreateOptionsMenu(Menu menu) {
+	public boolean onCreateOptionsMenu(Menu menu) { 
 		// Inflate the menu; this adds items to the action bar if it is present.
 		getMenuInflater().inflate(R.menu.friends, menu);
 		return true;
 	}
 	
-	public class friendRequest implements RequestListener{
-
-		@Override
-		public void onComplete(String response, Object state) {
-			JSONObject obj;
-			try {
-				obj = new JSONObject(response);
-					JSONArray data = obj.getJSONArray("data");
-			for (int i = 0; i < data.length(); i++) {
-				final HashMap<String, String> friend = new HashMap<String,String>();
-				JSONObject friendObj =data.getJSONObject(i);
-				String id = friendObj.getString("id");
-				friend.put("id", id) ;
-				friend.put("name", friendObj.getString("name")) ;
-				
-				//gets picture of friend
-				Bundle param = new Bundle();
-				param.putString("type", "normal");
-				myAsyncRunner.request(id+"/picture",param, new RequestListener() {
-					
-					@Override
-					public void onMalformedURLException(MalformedURLException e, Object state) {
-						// TODO Auto-generated method stub
-						
-					}
-					
-					@Override
-					public void onIOException(IOException e, Object state) {
-						// TODO Auto-generated method stub
-						
-					}
-					
-					@Override
-					public void onFileNotFoundException(FileNotFoundException e, Object state) {
-						// TODO Auto-generated method stub
-						
-					}
-					
-					@Override
-					public void onFacebookError(FacebookError e, Object state) {
-						// TODO Auto-generated method stub
-						
-					}
-					
-					@Override
-					public void onComplete(String response, Object state) {
-						
-						//Algorithm to handle extracting friend picture and saving it to
-						//FB friend object
-						JSONObject obj;
-						Bitmap pic = null;
-						try {
-							obj = new JSONObject(response);
-							JSONObject data = obj.getJSONObject("data");
-							URL url = new URL(data.getString("url"));
-							friend.put("img", url.toString());
-							UserFriendsID.add(friend);
-						} catch (JSONException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						} catch (MalformedURLException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						} catch (IOException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
-						
-						
-					}
-				});
-				
-			}
-			} catch (JSONException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}
-		
-			
-		}
-
-		@Override
-		public void onIOException(IOException e, Object state) {
-			// TODO Auto-generated method stub
-			
-		}
-
-		@Override
-		public void onFileNotFoundException(FileNotFoundException e,
-				Object state) {
-			// TODO Auto-generated method stub
-			
-		}
-
-		@Override
-		public void onMalformedURLException(MalformedURLException e,
-				Object state) {
-			// TODO Auto-generated method stub
-			
-		}
-
-		@Override
-		public void onFacebookError(FacebookError e, Object state) {
-			// TODO Auto-generated method stub
-			
-		}
-		
+	public boolean onOptionsItemSelected(MenuItem item) {
+	    switch (item.getItemId()) {
+	        case R.drawable.whrt2golabel:
+	            // app icon in action bar clicked; go home
+	            Intent intent = new Intent(this, FriendsActivity.class);
+	            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+	            startActivity(intent);
+	            return true;
+	        default:
+	            return super.onOptionsItemSelected(item);
+	    }
 	}
 	
 	private void getFacebookFriends(){
@@ -323,7 +207,7 @@ public class FriendsActivity extends ListActivity {
         protected void onPreExecute() {
                  pd = new ProgressDialog(FriendsActivity.this);
                  pd.setTitle("Processing Friends...");
-                 pd.setMessage("Retrieving friends in venues. Please wait........");
+                 pd.setMessage("Retrieving friends in venues.\nPlease wait........");
                  pd.setCancelable(false);
                  pd.setIndeterminate(true);
                  pd.show();
@@ -337,8 +221,8 @@ public class FriendsActivity extends ListActivity {
 			Iterator<String> DBsetIterator = IdsInVenues.iterator();
 			
 			while (FBsetIterator.hasNext()){
-				HashMap<String, String> FBfriend = FBsetIterator.next();
-				tempId.add(FBfriend.get("id"));
+				HashMap FBfriend = FBsetIterator.next();
+				tempId.add(FBfriend.get("id").toString());
 			}			
 			
 			while (DBsetIterator.hasNext()){
@@ -394,7 +278,7 @@ public class FriendsActivity extends ListActivity {
 				holder = new ViewHolder();
 				holder.txtfriendName = (TextView) convertView.findViewById(R.id.row_placename);
 				holder.txtPlaceAddress = (TextView) convertView.findViewById(R.id.row_placeaddress);
-				holder.friendPic = (ImageView) convertView.findViewById(R.id.row_pic);
+				holder.friendPic = (ImageView) convertView.findViewById(R.id.profilePictureView1);
 				holder.layout = (RelativeLayout) convertView.findViewById(R.id.row_layout);
 				convertView.setTag(holder);
 			} else {

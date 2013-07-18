@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- File created by the Android Action Bar Style Generator
+
+     Copyright (C) 2011 The Android Open Source Project
+     Copyright (C) 2012 readyState Software Ltd
+
+     Licensed under the Apache License, Version 2.0 (the "License");
+     you may not use this file except in compliance with the License.
+     You may obtain a copy of the License at
+  
+          http://www.apache.org/licenses/LICENSE-2.0
+  
+     Unless required by applicable law or agreed to in writing, software
+     distributed under the License is distributed on an "AS IS" BASIS,
+     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+     See the License for the specific language governing permissions and
+     limitations under the License.
+-->
+
+<resources>
+
+    <style name="Theme.Whrtigo" parent="@android:style/Theme.Holo.Light">
+        <item name="android:actionBarItemBackground">@drawable/selectable_background_whrtigo</item>
+        <item name="android:popupMenuStyle">@style/PopupMenu.Whrtigo</item>
+        <item name="android:dropDownListViewStyle">@style/DropDownListView.Whrtigo</item>
+        <item name="android:actionBarTabStyle">@style/ActionBarTabStyle.Whrtigo</item>
+        <item name="android:actionDropDownStyle">@style/DropDownNav.Whrtigo</item>
+        <item name="android:actionBarStyle">@style/ActionBar.Solid.Whrtigo</item>
+        <item name="android:actionModeBackground">@drawable/cab_background_top_whrtigo</item>
+        <item name="android:actionModeSplitBackground">@drawable/cab_background_bottom_whrtigo</item>
+        <item name="android:actionModeCloseButtonStyle">@style/ActionButton.CloseMode.Whrtigo</item>
+        
+        
+    </style>
+
+    <style name="ActionBar.Solid.Whrtigo" parent="@android:style/Widget.Holo.ActionBar">
+        <item name="android:background">@drawable/ab_solid_whrtigo</item>
+        <item name="android:backgroundStacked">@drawable/ab_stacked_solid_whrtigo</item>
+        <item name="android:backgroundSplit">@drawable/ab_bottom_solid_whrtigo</item>
+        <item name="android:progressBarStyle">@style/ProgressBar.Whrtigo</item>
+        <item name="android:displayOptions"></item>
+        <item name="android:icon">@drawable/whrt2golabel</item>
+    </style>
+
+    <style name="ActionBar.Transparent.Whrtigo" parent="@android:style/Widget.Holo.Light.ActionBar">
+        <item name="android:background">@drawable/ab_transparent_whrtigo</item>
+        <item name="android:progressBarStyle">@style/ProgressBar.Whrtigo</item>
+    </style>
+
+    <style name="PopupMenu.Whrtigo" parent="@android:style/Widget.Holo.Light.ListPopupWindow">
+        <item name="android:popupBackground">@drawable/menu_dropdown_panel_whrtigo</item>	
+    </style>
+
+    <style name="DropDownListView.Whrtigo" parent="@android:style/Widget.Holo.Light.ListView.DropDown">
+        <item name="android:listSelector">@drawable/selectable_background_whrtigo</item>
+    </style>
+
+    <style name="ActionBarTabStyle.Whrtigo" parent="@android:style/Widget.Holo.Light.ActionBar.TabView">
+        <item name="android:background">@drawable/tab_indicator_ab_whrtigo</item>
+    </style>
+
+    <style name="DropDownNav.Whrtigo" parent="@android:style/Widget.Holo.Light.Spinner">
+        <item name="android:background">@drawable/spinner_background_ab_whrtigo</item>
+        <item name="android:popupBackground">@drawable/menu_dropdown_panel_whrtigo</item>
+        <item name="android:dropDownSelector">@drawable/selectable_background_whrtigo</item>
+    </style>
+    
+    <style name="ProgressBar.Whrtigo" parent="@android:style/Widget.Holo.Light.ProgressBar.Horizontal">
+        <item name="android:progressDrawable">@drawable/progress_horizontal_whrtigo</item>
+    </style>
+    
+    <style name="ActionButton.CloseMode.Whrtigo" parent="@android:style/Widget.Holo.Light.ActionButton.CloseMode">
+        <item name="android:background">@drawable/btn_cab_done_whrtigo</item>
+    </style>
+
+    <!-- this style is only referenced in a Light.DarkActionBar based theme -->
+    <style name="Theme.Whrtigo.Widget" parent="@android:style/Theme.Holo">
+        <item name="android:popupMenuStyle">@style/PopupMenu.Whrtigo</item>
+        <item name="android:dropDownListViewStyle">@style/DropDownListView.Whrtigo</item>
+    </style>
+
+</resources>
