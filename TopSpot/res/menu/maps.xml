@@ -9,5 +9,10 @@
           android:icon="@drawable/friends_icon"
           android:title="Friends"
           android:showAsAction="ifRoom|withText" />
+    <item 
+        android:id="@+id/refreshermaps"
+        android:icon="@drawable/navigation_refresh"
+        android:title="Refresh Maps" 
+        android:showAsAction="always"></item>
 
 </menu>

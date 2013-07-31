@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/ab_transparent_whrtigo" >
+
+     <TextView
+         android:id="@+id/VenuePopulation"
+         android:layout_width="wrap_content"
+         android:layout_height="wrap_content"
+         android:layout_alignLeft="@+id/VenueName"
+         android:layout_below="@+id/VenueName"
+         android:padding="5dip"
+         android:text="Population: "
+         android:textColor="#000000"
+         android:textSize="10sp" />
+
+     <TextView
+         android:id="@+id/VenueName"
+         android:layout_width="wrap_content"
+         android:layout_height="wrap_content"
+         android:layout_alignParentLeft="true"
+         android:layout_alignParentTop="true"
+         android:paddingLeft="5dip"
+         android:paddingTop="5dip"
+         android:text="Venue name"
+         android:textColor="@color/pressed_whrtigo"
+         android:textSize="15sp"
+         android:textStyle="bold" />
+
+</RelativeLayout>
