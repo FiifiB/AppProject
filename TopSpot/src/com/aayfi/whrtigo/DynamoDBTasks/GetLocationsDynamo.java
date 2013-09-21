@@ -39,7 +39,7 @@ public class GetLocationsDynamo extends AsyncTask<Void, Void, ArrayList<String>>
 			client.setEndpoint("dynamodb.us-east-1.amazonaws.com");
 			
 			ScanRequest scanRequest = new ScanRequest()
-		    .withTableName(tableName).withAttributesToGet(Arrays.asList("Location")).withAttributesToGet("ID");
+		    .withTableName(tableName).withAttributesToGet(Arrays.asList("Location","ID"));
 
 		ScanResult result = client.scan(scanRequest);
 		for (Map<String, AttributeValue> item : result.getItems()){

@@ -1,40 +1,43 @@
 package com.aayfi.whrtigo.main;
 
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.util.List;
 
-import com.aayfi.whrtigo.R;
-import com.aayfi.whrtigo.AuthorizationAndStore.OAuthAccessTokenActivity;
-import com.facebook.Session;
-import com.facebook.Session.NewPermissionsRequest;
-import com.facebook.SessionState;
-import com.facebook.android.AsyncFacebookRunner;
-import com.facebook.android.DialogError;
-import com.facebook.android.Facebook;
-import com.facebook.android.Facebook.DialogListener;
-import com.facebook.android.FacebookError;
+import org.json.JSONException;
+import org.json.JSONObject;
 
-import android.os.Bundle;
-import android.preference.PreferenceManager;
 import android.app.ActionBar;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
-import android.content.pm.PackageInfo;
-import android.content.pm.PackageManager;
-import android.content.pm.PackageManager.NameNotFoundException;
-import android.content.pm.Signature;
-import android.util.Base64;
+import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.Menu;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.widget.Button;
 import android.widget.ImageButton;
-import android.widget.ImageView;
 import android.widget.Toast;
+
+import com.aayfi.whrtigo.R;
+import com.facebook.android.AsyncFacebookRunner;
+import com.facebook.android.DialogError;
+import com.facebook.android.Facebook;
+import com.facebook.android.AsyncFacebookRunner.RequestListener;
+import com.facebook.android.Facebook.DialogListener;
+import com.facebook.android.FacebookError;
+import com.quickblox.core.QBCallback;
+import com.quickblox.core.QBCallbackImpl;
+import com.quickblox.core.QBSettings;
+import com.quickblox.core.result.Result;
+import com.quickblox.internal.core.helper.StringifyArrayList;
+import com.quickblox.module.auth.QBAuth;
+import com.quickblox.module.users.QBUsers;
+import com.quickblox.module.users.model.QBUser;
+import com.quickblox.module.users.result.QBUserResult;
 
 /**
  * Login activity that directs users to authorization page
@@ -42,12 +45,16 @@ import android.widget.Toast;
  *
  */
 @SuppressWarnings("deprecation")
-public class LoginActivity extends Activity {
+public class LoginActivity extends Activity implements QBCallback {
 	private Facebook fb;
 	private String APP_ID;
 	private AsyncFacebookRunner myAsyncRunner;
+	private String UserId;
+	private String UserFName;
+	private String UserLName;
+	private QBUser QBUser;
 	private SharedPreferences prefs;
-	private String[] permissions ={"user_location","user_checkins","user_status","friends_online_presence"}; 
+	private String[] permissions ={"user_location","user_checkins","user_status","friends_online_presence","friends_status"}; 
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -62,13 +69,39 @@ public class LoginActivity extends Activity {
 		String access_token = prefs.getString("FBAccessToken", null);
 		long expires = prefs.getLong("FBAccessExpires", 0);
 		
+		 // ================= QuickBlox ===== Step 1 =================
+        // Initialize QuickBlox application with credentials.
+        // Getting app credentials -- http://quickblox.com/developers/Getting_application_credentials
+        QBSettings.getInstance().fastConfigInit("3795", "gZ3hsD4n-Qpjata", "XRDDFnuAd6e7KGx");
+
+        // ================= QuickBlox ===== Step 2 =================
+        // Authorize application.
+        QBAuth.createSession(new QBCallback() {
+			
+			@Override
+			public void onComplete(Result arg0, Object arg1) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			@Override
+			public void onComplete(Result arg0) {
+				// TODO Auto-generated method stub
+				
+			}
+		});
+		
+        //initialise Facebook with the access token expirey date from shared preference
 		if (access_token != null && expires != 0 ){
 			fb.setAccessToken(access_token);
 			fb.setAccessExpires(expires);
-			Intent intent = new Intent(LoginActivity.this,MapsActivity.class);
-			finish();
-			startActivity(intent);
+			getFacebookID();
+			
 		}
+		
+		
+		
+	
 		
 		ImageButton fblogin = (ImageButton)findViewById(R.id.fbbttn);
 		fblogin.setOnClickListener(new OnClickListener() {
@@ -76,10 +109,9 @@ public class LoginActivity extends Activity {
 			@Override
 			public void onClick(View v) {
 				
-				if(fb.isSessionValid()){
-					Intent intent = new Intent(LoginActivity.this,ContainActivity.class);
-					finish();
-					startActivity(intent);
+				if(fb.isSessionValid()){					
+					getFacebookID();					
+					
 				}else {
 					fb.authorize(LoginActivity.this, permissions,Facebook.FORCE_DIALOG_AUTH, new DialogListener() {
 						
@@ -102,9 +134,7 @@ public class LoginActivity extends Activity {
 							editor.putLong("FBAccessExpires", fb.getAccessExpires());
 							editor.commit();
 							
-							Intent intent = new Intent(LoginActivity.this,MapsActivity.class);
-							finish();
-							startActivity(intent);
+							getFacebookID();							
 							
 						}
 						
@@ -117,14 +147,27 @@ public class LoginActivity extends Activity {
 			}
 		});		
 	}
-	
-	private class SessionStatusCallback implements Session.StatusCallback {
-	    @Override
-	    public void call(Session session, SessionState state, Exception exception) {
-	            // Respond to session state changes, ex: updating the view
-	    }
+
+	private void signInOrSignUptoQB() {
+		
+		QBUser = new QBUser("00"+UserId+"11", UserId+UserLName);
+		Integer integ = new Integer(UserId);							
+		QBUser.setId(integ);
+		QBUser.setFacebookId(UserId);
+		QBUser.setFullName(UserFName + ""+ UserLName);
+		StringifyArrayList<String> tags = new StringifyArrayList<String>();
+		tags.add("AppUser");
+		QBUser.setTags(tags);	
+		
+		// ================= QuickBlox ===== Step 3 =================
+        // Register user or sign in QuickBlox. 
+		QBUsers.signUp(QBUser, LoginActivity.this);
+		
+		Intent intent = new Intent(LoginActivity.this,MapsActivity.class);							
+		startActivity(intent);
+		
 	}
-	
+
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 		// TODO Auto-generated method stub
@@ -137,4 +180,106 @@ public class LoginActivity extends Activity {
 		getMenuInflater().inflate(R.menu.login, menu);
 		return true;
 	}
+//	Get Facebook Id and user Info
+//	private void getFacebookID(){
+//		String json = null;
+//		try {
+//			json = fb.request("me");
+//		} catch (MalformedURLException e1) {
+//			// TODO Auto-generated catch block
+//			e1.printStackTrace();
+//		} catch (IOException e1) {
+//			// TODO Auto-generated catch block
+//			e1.printStackTrace();
+//		}
+//        try {
+//            JSONObject profile = new JSONObject(json);
+//            // getting id and user info
+//            UserId = profile.getString("id");
+//            UserFName = profile.getString("first_name");
+//            UserLName = profile.getString("last_name");           
+//        } catch (JSONException e) {
+//            e.printStackTrace();
+//        } 
+//	}
+	
+	private void getFacebookID(){
+		myAsyncRunner.request("me", new RequestListener() {
+			
+			@Override
+			public void onMalformedURLException(MalformedURLException e, Object state) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			@Override
+			public void onIOException(IOException e, Object state) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			@Override
+			public void onFileNotFoundException(FileNotFoundException e, Object state) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			@Override
+			public void onFacebookError(FacebookError e, Object state) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			@Override
+			public void onComplete(String response, Object state) {
+	            String json = response;
+	            try {
+	                JSONObject profile = new JSONObject(json);
+	                // getting id and user info
+	                UserId = profile.getString("id");
+	                UserFName = profile.getString("first_name");
+	                UserLName = profile.getString("last_name"); 
+	                
+	                runOnUiThread(new Runnable() {
+						public void run() {
+							signInOrSignUptoQB();							
+						}
+					});
+	                
+	 
+	            } catch (JSONException e) {
+	                e.printStackTrace();
+	            }
+				
+			}
+		});
+	}
+	
+	@Override
+	public void onComplete(Result arg0, Object arg1) {
+		// TODO Auto-generated method stub
+		
+	}
+	
+	@Override
+	public void onComplete(Result result) {
+		if (result.isSuccess()) {
+            QBUserResult qbUserResult = (QBUserResult) result;
+            Log.d("Registration was successful","user: " + qbUserResult.getUser().toString());
+        } else {
+//        	List<String> error = null;
+//        	error.add("login has already been taken");							        	
+//        	if (result.getErrors().equals(error)){
+        		
+        		// ================= QuickBlox ===== Step 3 =================
+                // Login user into QuickBlox.
+                // Pass this activity , because it implements QBCallback interface.
+                // Callback result will come into onComplete method below.
+        		QBUsers.signIn(QBUser, LoginActivity.this);
+        	
+            Log.e("Errors",result.getErrors().toString()); 
+		
+				}
+	}
+	
 }

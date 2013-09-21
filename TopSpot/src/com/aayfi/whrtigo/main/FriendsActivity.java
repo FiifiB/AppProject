@@ -1,20 +1,25 @@
 package com.aayfi.whrtigo.main;
 
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.ParseException;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.util.EntityUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -31,12 +36,15 @@ import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
+import android.widget.ListView;
 import android.widget.RadioButton;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
@@ -44,7 +52,10 @@ import android.widget.TextView;
 import com.aayfi.whrtigo.R;
 import com.aayfi.whrtigo.DynamoDBTasks.GetUserIdsDynamo;
 import com.facebook.android.AsyncFacebookRunner;
+import com.facebook.android.AsyncFacebookRunner.RequestListener;
 import com.facebook.android.Facebook;
+import com.facebook.android.FacebookError;
+import com.google.gson.Gson;
 
 /**
  * This Activity is a list containing your friends that are in registered app venues
@@ -55,12 +66,15 @@ import com.facebook.android.Facebook;
 public class FriendsActivity extends ListActivity {
 	private Facebook fb;
 	private String APP_ID;
+	private SharedPreferences prefs;
+	private Map<String, FBperson> UserFriendsID = new HashMap<String, FBperson>() ;
+	private List<UserAndVen> UserFriends = new ArrayList<UserAndVen>();
+	private HashSet<String> IdsInVenues = new HashSet<String>();
 	private AsyncFacebookRunner myAsyncRunner;
 	private String UserId ;
-	private SharedPreferences prefs;
-	private HashSet<HashMap> UserFriendsID = new HashSet<HashMap>();
-	private List<UserAndVen> UserFriends = new ArrayList<UserAndVen>();
-	private HashSet<String> IdsInVenues = new HashSet<String>();	
+	private String MyLat;
+	private String MyLon;
+	private ListView listview;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState){
@@ -85,10 +99,15 @@ public class FriendsActivity extends ListActivity {
 			fb.setAccessExpires(expires);
 		}else{
 			Intent intent = new Intent(this,LoginActivity.class);
-			finish();
 			startActivity(intent);
 		}
+		listview = getListView();
 		
+		//gets Location from intent 
+		MyLat = Double.toString(getIntent().getExtras().getDouble("myLat"));
+		MyLon = Double.toString(getIntent().getExtras().getDouble("myLon"));
+		
+		getFacebookID();
 		
 		UserFriends.clear();
 		UserFriendsID.clear();
@@ -100,11 +119,28 @@ public class FriendsActivity extends ListActivity {
 		user.Venue = "Marlowe Academy";
 		UserFriends.add(user);
 		
-		//Gets the people in every location in the database
-		getUsersAndLocation();
-		
 		//Starts the thread shows friends in the activity list adapter
 		new FriendsListRefresher().execute();
+		
+		listview.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+
+		      @Override
+		      public void onItemClick(AdapterView<?> parent, final View view,
+		          int position, long id) {
+		    	  
+		    	  final UserAndVen friend = (UserAndVen) parent.getItemAtPosition(position);
+		    	  Intent intent = new Intent(FriendsActivity.this,FriendProfileActivity.class);
+		    	  Bundle bundle = new Bundle();
+		    	  
+		    	  bundle.putString("ID", friend.ID);
+		    	  bundle.putString("MyID", UserId);
+		    	  bundle.putString("Location", friend.Venue);
+		    	  bundle.putString("Name", friend.txtfriendName);
+		    	  
+		    	  intent.putExtras(bundle);
+		    	  startActivity(intent);		        
+		      }
+		    });
 		
 	}
 	protected void onPause() {
@@ -123,10 +159,11 @@ public class FriendsActivity extends ListActivity {
 	}
 	
 	public boolean onOptionsItemSelected(MenuItem item) {
+		
 	    switch (item.getItemId()) {
-	        case R.drawable.whrt2golabel:
+	        case android.R.id.home:
 	            // app icon in action bar clicked; go home
-	            Intent intent = new Intent(this, FriendsActivity.class);
+	            Intent intent = new Intent(this, MapsActivity.class);
 	            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 	            startActivity(intent);
 	            return true;
@@ -136,35 +173,48 @@ public class FriendsActivity extends ListActivity {
 	}
 	
 	private void getFacebookFriends(){
-		Bitmap img;
-		JSONObject obj;
-			try {
-				String response = fb.request("me/friends");
-				obj = new JSONObject(response);
-				JSONArray data = obj.getJSONArray("data");
-					for (int i = 0; i < data.length(); i++) {
-						HashMap friend = new HashMap();
-						JSONObject friendObj =data.getJSONObject(i);
-						String id = friendObj.getString("id");
-						friend.put("id", id) ;
-						friend.put("name", friendObj.getString("name")) ;
-						
-						//gets picture of friend
-						img = getFBpic(id);
-						friend.put("img", img);
-				
-					}
-			} catch (JSONException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (MalformedURLException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-				
+		final String uri = 
+				"https://graph.facebook.com/me/friends?access_token="+fb.getAccessToken();
+		
+				HttpClient httpclient = new DefaultHttpClient();			     
+			    HttpGet httpget = new HttpGet(uri);
+			    HttpEntity entity;
+			    HttpResponse response = null;	
+				JSONObject obj;
+				try {					
+						String responseString ;
+						response = httpclient.execute(httpget);
+						entity = response.getEntity();
+						BufferedReader br = new BufferedReader(
+			            new InputStreamReader((entity.getContent())));
+						String line = null;
+						StringBuffer theText = new StringBuffer();
+						while((line=br.readLine())!=null){
+						theText.append(line);
+						}
+						responseString = theText.toString();
+						obj = new JSONObject(responseString);
+						System.out.println(responseString);
+						JSONArray data = obj.getJSONArray("data");
+						for (int i = 0; i < data.length(); i++) {
+							FBperson friend = new FBperson();
+							JSONObject friendObj =data.getJSONObject(i);
+							String id = friendObj.getString("id");
+							friend.setId(id) ;
+							friend.setName( friendObj.getString("name"));							
+							UserFriendsID.put(id, friend);
+						}
+					
+				} catch (ClientProtocolException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (JSONException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}		
 		
 
 	}
@@ -211,52 +261,92 @@ public class FriendsActivity extends ListActivity {
                  pd.setCancelable(false);
                  pd.setIndeterminate(true);
                  pd.show();
+        	
         }
         
+//        not complete
 		@Override
 		protected Void doInBackground(Void... params) {
+			
 			getFacebookFriends();
-			HashSet<String> tempId = new HashSet<String>();
-			Iterator<HashMap> FBsetIterator = UserFriendsID.iterator();
-			Iterator<String> DBsetIterator = IdsInVenues.iterator();
 			
-			while (FBsetIterator.hasNext()){
-				HashMap FBfriend = FBsetIterator.next();
-				tempId.add(FBfriend.get("id").toString());
-			}			
-			
-			while (DBsetIterator.hasNext()){
-				String [] split = DBsetIterator.next().split(":");
-				if (tempId.contains(split[0])){
-					while(FBsetIterator.hasNext()){
-						HashMap<String, String> FBfriend = FBsetIterator.next();
-						if(FBfriend.containsValue(split[0])){
+			int num = UserFriendsID.size();
+			ArrayList<String> usersNearby = GetUsersNearby(MyLat,MyLon);
+			for(String User: usersNearby){
+				String verdict = null;
+				int h = num;
+				String [] SplitOne = User.split(";");
+				System.out.println(SplitOne[0]+" "+ SplitOne[2]);
+				JSONArray people = null;
+				try {
+					people = new JSONArray(SplitOne[1]);
+					System.out.println("Success Array"+ " JSON Array Complete");
+					Log.d("Success Array", "JSON Array Complete");
+				} catch (JSONException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+//				verdict = SearchForUserFriends(friend.getId(),MyLat,MyLon);
+				
+				for (int i = 0; i < people.length(); i++) {
+					FBperson test = new FBperson();
+					try {
+						test.setId(people.getString(i));
+					} catch (JSONException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					try {
+						if (UserFriendsID.containsKey(people.getString(i))){
+							System.out.println("Found friend"+ " Found friend in loop");
+							Log.d("Found friend", "Found friend in loop");
+							Bitmap img = null;
+							String index = people.getString(i);
 							UserAndVen UserVen = new UserAndVen();
-							UserVen.txtfriendName = FBfriend.get("name");
-							UserVen.Venue = split[1];
-							URL url = null;
-							//								url = new URL(FBfriend.get("url"));
-//								Bitmap pic = BitmapFactory.decodeStream(url.openConnection().getInputStream());
-							UserVen.friendImg = new BitmapDrawable(FBfriend.get("img"));
-							
-							
+							UserVen.txtfriendName = UserFriendsID.get(index).getName();
+							UserVen.Venue = SplitOne[0];
+							UserVen.ID = UserFriendsID.get(index).getId();
+							//gets picture of friend
+							img = getFBpic(UserFriendsID.get(index).getId());
+							UserFriendsID.get(index).setPic(img);
+							UserVen.friendImg = new BitmapDrawable(UserFriendsID.get(index).getPic());
+							System.out.println("Acting populating.........");
+							UserFriends.add(UserVen);
 						}
+					} catch (JSONException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
 					}
 				}
-			}
+				
+//				test.setId(id);
+//				if (verdict != null && verdict != ""){
+//					Bitmap img = null;
+//					UserAndVen UserVen = new UserAndVen();
+//					UserVen.txtfriendName = friend.getName();
+//					UserVen.Venue = verdict;
+//					UserVen.ID = friend.getId();
+//					//gets picture of friend
+//					img = getFBpic(friend.getId());
+//					friend.setPic(img);
+//					UserVen.friendImg = new BitmapDrawable(friend.getPic());
+//					System.out.println("Acting populating.........");
+//					UserFriends.add(UserVen);
+//				}
+			}			
 			return null;
 		}		
 		@Override
 		protected void onPostExecute(Void result) {
 			
 			//method used to set friends in the list
-			setListAdapter(new TableAdapter(UserFriends));
+			listview.setAdapter(new TableAdapter(UserFriends));
 			pd.dismiss();
 		}
 	}
 	
 	private UserAndVen getfriendMapFromAdapter(int position) {
-		return (((TableAdapter) getListAdapter()).getItem(position));
+		return (((TableAdapter) listview.getAdapter()).getItem(position));
 	}
 	
 	/**
@@ -321,13 +411,15 @@ public class FriendsActivity extends ListActivity {
 		public String txtfriendName;
 		public String Venue;
 		public Drawable friendImg;
+		public String ID;
+		
 	}
 	
 	/**
 	 * This method starts the thread that gets all ids in every registered venues 
 	 * and stores them in an array.
 	 */
-	public void getUsersAndLocation(){
+	private void getUsersAndLocation(){
 		IdsInVenues.clear();
 			
 			try {
@@ -344,6 +436,109 @@ public class FriendsActivity extends ListActivity {
 			}
 		
 	}
+	
+	private ArrayList<String> GetUsersNearby(String Lat,String Lon){
+		ArrayList<String> result = null;
+		String uri = 
+				"http://192.168.1.130:8088/MongoDBServices/CheckUserId?param="+Lat+"&param="+Lon;
+			     HttpClient httpclient = new DefaultHttpClient();			     
+			     HttpGet httpget = new HttpGet(uri);
+			     HttpResponse response = null;
+				try {
+					response = httpclient.execute(httpget);
+				} catch (ClientProtocolException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+//			     System.out.println(response.getStatusLine().toString());
+			     HttpEntity entity = response.getEntity();
+			     
+			     Gson gson = new Gson();
+			     try {
+					result = gson.fromJson(EntityUtils.toString(entity), ArrayList.class);
+					
+				} catch (ParseException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+		return result;
+		
+	}
+	private class FBperson{
+		private String Id;
+		private String Name;
+		private Bitmap pic;
+		
+		public String getId() {
+			return Id;
+		}
+		public void setId(String id) {
+			Id = id;
+		}
+		public String getName() {
+			return Name;
+		}
+		public void setName(String name) {
+			Name = name;
+		}
+		public Bitmap getPic() {
+			return pic;
+		}
+		public void setPic(Bitmap pic) {
+			this.pic = pic;
+		}
+	}
+	
+	//Get Facebook Id
+		private void getFacebookID(){
+			myAsyncRunner.request("me", new RequestListener() {
+				
+				@Override
+				public void onMalformedURLException(MalformedURLException e, Object state) {
+					// TODO Auto-generated method stub
+					
+				}
+				
+				@Override
+				public void onIOException(IOException e, Object state) {
+					// TODO Auto-generated method stub
+					
+				}
+				
+				@Override
+				public void onFileNotFoundException(FileNotFoundException e, Object state) {
+					// TODO Auto-generated method stub
+					
+				}
+				
+				@Override
+				public void onFacebookError(FacebookError e, Object state) {
+					// TODO Auto-generated method stub
+					
+				}
+				
+				@Override
+				public void onComplete(String response, Object state) {
+		            String json = response;
+		            try {
+		                JSONObject profile = new JSONObject(json);
+		                // getting id of the user
+		                UserId = profile.getString("id");
+		 
+		            } catch (JSONException e) {
+		                e.printStackTrace();
+		            }
+					
+				}
+			});
+		}
+	
 	
 	
 }

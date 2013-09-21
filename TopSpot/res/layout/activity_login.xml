@@ -2,6 +2,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@drawable/loginscreen"
     tools:context=".LoginActivity" >
 
     <ImageButton
@@ -10,19 +11,9 @@
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:layout_centerHorizontal="true"
-        android:layout_marginBottom="106dp"
+        android:layout_marginBottom="82dp"
         android:adjustViewBounds="true"
-        android:background="@drawable/loginwithfb"
+        android:background="@drawable/custmfbbutton"
         android:src="@drawable/custmfbbutton" />
-
-    <ImageView
-        android:id="@+id/imageView1"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_above="@+id/fbbttn"
-        android:layout_alignParentLeft="true"
-        android:layout_marginBottom="21dp"
-        android:adjustViewBounds="true"
-        android:src="@drawable/topspot_logo" />
 
 </RelativeLayout>

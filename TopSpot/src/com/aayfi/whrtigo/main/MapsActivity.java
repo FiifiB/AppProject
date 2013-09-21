@@ -2,6 +2,7 @@ package com.aayfi.whrtigo.main;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -9,10 +10,12 @@ import java.util.concurrent.ExecutionException;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
+import org.apache.http.ParseException;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.util.EntityUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -32,6 +35,11 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.PorterDuff.Mode;
+import android.graphics.PorterDuffXfermode;
+import android.graphics.Rect;
+import android.graphics.RectF;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.LayerDrawable;
@@ -49,12 +57,12 @@ import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.DatabseTasks.AddIdTask;
+import com.DatabseTasks.GetLocationsTask;
+import com.DatabseTasks.GetNoOfPeopleTask;
+import com.DatabseTasks.RemoveIdTask;
 import com.aayfi.whrtigo.R;
 import com.aayfi.whrtigo.AuthorizationAndStore.SharedPreferencesCredentialStore;
-import com.aayfi.whrtigo.DynamoDBTasks.AddIdDynamo;
-import com.aayfi.whrtigo.DynamoDBTasks.GetLocationsDynamo;
-import com.aayfi.whrtigo.DynamoDBTasks.GetNoOfPeopleDynamo;
-import com.aayfi.whrtigo.DynamoDBTasks.RemoveIdDynamo;
 import com.facebook.android.AsyncFacebookRunner;
 import com.facebook.android.AsyncFacebookRunner.RequestListener;
 import com.facebook.android.Facebook;
@@ -70,6 +78,7 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.maps.MyLocationOverlay;
 import com.google.android.maps.Overlay;
+import com.google.gson.Gson;
 
 @SuppressWarnings("deprecation")
 public class MapsActivity extends Activity {
@@ -88,11 +97,12 @@ public class MapsActivity extends Activity {
 	private ArrayList<FBLocationObj> FbLocations= new ArrayList<FBLocationObj>();
 	private VenuesOverlay locOverlay;
 	private MyLocationOverlay myLocationOverlay;
-	private List<String> RegisteredVeneus = new ArrayList<String>();
+	private ArrayList<String> RegisteredVenues = new ArrayList<String>();
 	private Menu optionsMenu;
 	private BroadcastReceiver proxiReceiver;
 	private IntentFilter filter;
 	private static final String TREASURE_PROXIMITY_ALERT = "com.topspot.action.proximityalert";
+	
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -164,22 +174,20 @@ public class MapsActivity extends Activity {
 		myGmap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 13));
 		
 		//Set up for proximity alerts
-		filter = new IntentFilter(TREASURE_PROXIMITY_ALERT);
-		proxiReceiver = new ProximityIntentReceiver();
-		registerReceiver(proxiReceiver, filter);		
-		registerIntents(locationManager);
+//		filter = new IntentFilter(TREASURE_PROXIMITY_ALERT);
+//		proxiReceiver = new ProximityIntentReceiver();
+//		registerReceiver(proxiReceiver, filter);		
+//		registerIntents(locationManager);
 		
 		//Launches thread to get Locations in the Database 
-		getRegisteredLocation();
+//		getRegisteredLocation();
 		
 		getFacebookID();
-		
-		myGmap.setInfoWindowAdapter(new myInfoWindowAdapter());
 		
 		//populates the map with places near your location
 		updateWithNewLocation(myLoc);
 
-		
+		myGmap.setInfoWindowAdapter(new myInfoWindowAdapter());
 		
 	}
 	
@@ -217,6 +225,8 @@ public class MapsActivity extends Activity {
 	        case R.id.menu_friends:
 	            // app icon in action bar clicked; go home
 	            Intent intent = new Intent(this, FriendsActivity.class);
+	            intent.putExtra("myLat", myLoc.getLatitude());
+	            intent.putExtra("myLat", myLoc.getLongitude());
 	            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 	            startActivity(intent);
 	            return true;
@@ -281,55 +291,85 @@ public class MapsActivity extends Activity {
 	//Gets Nearby Venues That have been registered with this app
 	private class GetNearbyVenues extends AsyncTask<Void, Void, Void> {
 		
-		private ProgressDialog pd;
         @Override
         protected void onPreExecute() {
         	setRefreshActionButtonState(true);
         	LatLng latLng = new LatLng(myLoc.getLatitude(), myLoc.getLongitude());
     		myGmap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 13));
+    		
+    		
         }
 		
 		@Override
-		protected Void doInBackground(Void... params) {			
+		protected Void doInBackground(Void... params) {	
+			RegisteredVenues.clear();
+			getPlacesNearby(myLoc);
+		if(RegisteredVenues.size()!= 0){
+			for (int i = 0; i < RegisteredVenues.size(); i++){
+				String res[] = RegisteredVenues.get(i).split(":");
+				String ID = res[0].trim();
+				String res2[] = res[1].split(";");
+				String VenueName = res2[0];
+				JSONArray LonLat = null;
+				try {
+					LonLat = new JSONArray(res2[1]);
+				} catch (JSONException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				
+				//creates Google LatLng to add location to the map
+				LatLng p = null;
+				try {
+					p = new LatLng(LonLat.getDouble(0),LonLat.getDouble(1));
+				} catch (JSONException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				
+				String Location = null;
+				try {
+					Location = Double.toString(LonLat.getDouble(0))+","+Double.toString(LonLat.getDouble(1));
+				} catch (JSONException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				//gets the number of people in that Place
+				Integer count;
+				count = getpeeps(Location);
+				
+				//create the item to add to the map
+				String message = "Population at "+VenueName+": "+count;
+				final MarkerOptions item = new MarkerOptions();
+				item.position(p);
+				item.title(VenueName);
+				item.snippet(message);
+				
+				boolean imgYes = false;
+				Bitmap venImg = null;
+				venImg = getFBpic(ID);
+				
+				if (venImg != null){
+					imgYes = true;
+					item.icon(BitmapDescriptorFactory.fromBitmap(addBorder(venImg, 10)));
+				}
+				runOnUiThread(new  Runnable() {
+					public void run() {
+						myGmap.addMarker(item);
+						
+					}
+				});
+				
+
+			}	
+		}
 			
-			getFBPlacesNearby(myLoc);			
 			return null;
 		}
 		
 		@Override
 		protected void onPostExecute(Void result) {
-			for (String Rvenue: RegisteredVeneus){
-				for (int i = 0; i < FbLocations.size(); i++){
-					//Compares Lat and Lon in Database and FB Places to see if they match
-					if (Rvenue.equals(FbLocations.get(i).getLocation())){				
-						String[] LatLon = Rvenue.split(",");
-						Double Dlat = Double.parseDouble(LatLon[0]);
-						Double Dlon = Double.parseDouble(LatLon[1]);
-						//creates Google LatLng to add location to the map
-						LatLng p = 
-						new LatLng(Dlat,Dlon);
-						Toast.makeText(MapsActivity.this, "found.....", Toast.LENGTH_SHORT).show();
-						
-						//gets the number of people in that Place
-						Integer count;
-						count = getPeople(FbLocations.get(i).getLocation());
-						
-						//create the item to add to the map
-						String message = "Population at "+FbLocations.get(i).getName()+": "+count;
-						MarkerOptions item = new MarkerOptions();
-						item.position(p);
-						item.title(FbLocations.get(i).getName());
-						item.snippet(message);
-								
-							
-						item.icon(BitmapDescriptorFactory.fromBitmap(addBorder(FbLocations.get(i).Img, 10)));
-//						Bitmap.createScaledBitmap(addBorder(FbLocations.get(i).Img, 3),350,250,true)
-						Marker marker = myGmap.addMarker(item);
-					}
-				}
-			}
 			
-//			pd.dismiss();
 			setRefreshActionButtonState(false);
 		}
 
@@ -382,87 +422,22 @@ public class MapsActivity extends Activity {
 	
 	//Updates map with locations near your and how many people there are in the locations
 	private void updateWithNewLocation (Location location){
+		
 		new GetNearbyVenues().execute();
 //		mapOverlays.add(locOverlay);
 	}
 
-	//Get Facebook Locations nearby and their pictures	
-	private void getFBPlacesNearby(Location location){
-		String locat = location.getLatitude()+","+location.getLongitude();		
-		Bundle params = new Bundle();
-		params.putString("type", "place");
-		params.putString("center", locat);
-		params.putString("distance", "800");
-		params.putString("fields", "location,name,id");
-		String result = null;
-		try {
-			result = fb.request("search", params);
-		} catch (MalformedURLException e3) {
-			// TODO Auto-generated catch block
-			e3.printStackTrace();
-		} catch (IOException e3) {
-			// TODO Auto-generated catch block
-			e3.printStackTrace();
-		}
-		
-		JSONArray locations = null;
-		
-		try {
-			JSONObject data = new JSONObject(result);
-			locations = data.getJSONArray("data");
-			if (locations ==null){
-				System.out.println(data.optJSONArray("data"));
-			}
-		} catch (JSONException e2) {
-			e2.printStackTrace();
-		}
-		
-		
-		//Goes through array of results from the fb request and
-		//creates and adds facebook location objects to an array.
-		for (int i = 0; i < locations.length(); i++) {
-			String Name = null;
-			String Location = null;
-			String id = null;
-			Bitmap pict = null;
-			try {
-				JSONObject place = locations.getJSONObject(i);
-				
-				//Gets name of place
-				Name = place.getString("name");
-				
-				//Get Lat and Lon from JSON Object
-				JSONObject loc = place.getJSONObject("location");
-				Location = 
-					loc.getString("latitude")+","+loc.getString("longitude");
-				
-				//Gets picture of Place from FB
-				id = place.getString("id");
-				pict = 
-//						BitmapFactory.decodeResource(getResources(), R.drawable.btmpme);
-				getFBpic(id);
-			} catch (JSONException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}			
-			FBLocationObj FBobj = new FBLocationObj(Name, Location, pict);
-			FbLocations.add(FBobj);
-		}
-	}
-
-	
-	//returns an image for the id given
-	private Bitmap getFBpic(String id){
-		Bitmap img = null;
+	//Get Database Locations nearby 	
+	private void getPlacesNearby(Location location){
 		String uri = 
-				"https://graph.facebook.com/"+id+"/picture?type=large";
+				"http://192.168.1.130:8088/MongoDBServices/GetLocations?param=" +
+				Double.toString(location.getLatitude()) +	"&param=" +	Double.toString(location.getLongitude());
 			     HttpClient httpclient = new DefaultHttpClient();			     
 			     HttpGet httpget = new HttpGet(uri);
-			     HttpResponse response = null;				     
+			     HttpResponse response = null;
+			     ArrayList<String> result = null;
 				try {
 					response = httpclient.execute(httpget);
-					HttpEntity entity = response.getEntity();
-					img = BitmapFactory.decodeStream(entity.getContent());
 				} catch (ClientProtocolException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -470,8 +445,49 @@ public class MapsActivity extends Activity {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
+				HttpEntity entity = null;
+				
+//			     System.out.println(response.getStatusLine().toString());
+			    entity = response.getEntity();
+			     
+			     Gson gson = new Gson();
+			     try {
+					RegisteredVenues = gson.fromJson(EntityUtils.toString(entity), ArrayList.class);
+					
+				} catch (ParseException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} ;
+	}
+
+	
+	//returns an image for the id given
+	private Bitmap getFBpic (String Id){
+		final IMgStore imgstore = new IMgStore();
 		
-		return img;
+				final String uri = 
+						"https://graph.facebook.com/"+Id+"/picture?type=large";
+				
+						HttpClient httpclient = new DefaultHttpClient();			     
+					     HttpGet httpget = new HttpGet(uri);
+					     HttpResponse response = null;
+					     HttpEntity entity;
+						try {
+							response = httpclient.execute(httpget);
+							entity = response.getEntity();
+							imgstore.setImg(BitmapFactory.decodeStream(entity.getContent()));
+						} catch (ClientProtocolException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						} catch (IOException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+				return imgstore.getImg();
+			
 	}
 	
 	public class ProximityIntentReceiver extends BroadcastReceiver {	
@@ -482,10 +498,10 @@ public class MapsActivity extends Activity {
 			String key = LocationManager.KEY_PROXIMITY_ENTERING;
 			Boolean entering = intent.getBooleanExtra(key, false);			
 			if(entering){
-				new AddIdDynamo().execute(Location,UserId);
+				new AddIdTask().execute(Location,UserId);
 				Toast.makeText(getApplicationContext(), "im entering", Toast.LENGTH_LONG).show();
 			}else {
-				new RemoveIdDynamo().execute(Location,UserId);
+				new RemoveIdTask().execute(Location,UserId);
 				Toast.makeText(getApplicationContext(), "im exiting", Toast.LENGTH_LONG).show();
 			}
 						
@@ -507,9 +523,13 @@ public class MapsActivity extends Activity {
 		locManger.addProximityAlert(lat, lon, radius, expiration, pendingIntent);		
 	}
 	
-	public void getRegisteredLocation(){
+	private void getRegisteredLocation(){
+		String lat = Double.toString(myLoc.getLatitude());
+		String lon = Double.toString(myLoc.getLongitude());
+		
+
 		try {
-			RegisteredVeneus =	new GetLocationsDynamo().execute().get();			
+			RegisteredVenues =	new GetLocationsTask().execute(lat,lon).get();			
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -523,7 +543,7 @@ public class MapsActivity extends Activity {
 	public Integer getPeople(String Location){
 		Integer count = null;		
 		try {
-			count = new GetNoOfPeopleDynamo().execute(Location).get();			
+			count = new GetNoOfPeopleTask().execute(Location).get();
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -535,11 +555,22 @@ public class MapsActivity extends Activity {
 	}
 	
 	private void registerIntents(LocationManager locManager) {
-		for(int i = 0; i < RegisteredVeneus.size(); i++) {
-			String locat = RegisteredVeneus.get(i);
-			String[] loc = locat.split(",");
-			double latit = Double.parseDouble(loc[0]);
-			double longit = Double.parseDouble(loc[1]);
+		for(int i = 0; i < RegisteredVenues.size(); i++) {
+			String res[] = RegisteredVenues.get(i).split(":");
+			String res2[] = res[1].split(";");			
+			JSONArray LatLon = null;
+			double latit = 0;
+			double longit = 0;
+			try {
+				LatLon = new JSONArray(res2[1]);
+				latit = LatLon.getDouble(0);
+				longit = LatLon.getDouble(1);
+			} catch (JSONException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+			
 	    	setProximityAlert(locManager,latit,longit);
 	    }
 	}
@@ -572,6 +603,18 @@ public class MapsActivity extends Activity {
 		}
 		
 	}
+	private class IMgStore{
+		private Bitmap Img;
+
+		public Bitmap getImg() {
+			return Img;
+		}
+
+		public void setImg(Bitmap img) {
+			Img = img;
+		}
+		
+	}
 	public void setRefreshActionButtonState(final boolean refreshing) {
 	    if (optionsMenu != null) {
 	        final MenuItem refreshItem = optionsMenu
@@ -589,7 +632,21 @@ public class MapsActivity extends Activity {
 	private Bitmap addBorder(Bitmap bmp, int borderSize) {
 	    Bitmap bmpWithBorder = Bitmap.createBitmap(bmp.getWidth() + borderSize * 2, bmp.getHeight() + borderSize * 2, bmp.getConfig());
 	    Canvas canvas = new Canvas(bmpWithBorder);
-	    canvas.drawColor(Color.LTGRAY);
+//	    canvas.drawColor(Color.LTGRAY);
+	    
+
+        int color = 0xff424242;
+        Paint paint = new Paint();
+        Rect rect = new Rect(0, 0, bmpWithBorder.getWidth(), bmpWithBorder.getHeight());
+        RectF rectF = new RectF(rect);
+        float roundPx = 25;
+        paint.setAntiAlias(true);
+        canvas.drawARGB(0, 0, 0, 0);
+        paint.setColor(Color.parseColor("#c4c2c7"));
+        canvas.drawRoundRect(rectF, roundPx, roundPx, paint);
+
+        paint.setXfermode(new PorterDuffXfermode(Mode.SRC_IN));
+	    
 	    canvas.drawBitmap(bmp, borderSize, borderSize, null);
 	    return bmpWithBorder;
 	}
@@ -605,8 +662,9 @@ public class MapsActivity extends Activity {
 			TextView VenTxt = (TextView)myContentsView.findViewById(R.id.VenueName);
             TextView populTxt = (TextView)myContentsView.findViewById(R.id.VenuePopulation);
             VenTxt.setText(marker.getTitle());
-            populTxt.setText(marker.getSnippet());
-			return myContentsView;
+//            populTxt.setText("Population at "+marker.getTitle()+": " +getPeople(marker.getPosition().latitude+","+marker.getPosition().longitude));
+			populTxt.setText(marker.getSnippet());
+            return myContentsView;
 		}
 
 		@Override
@@ -651,6 +709,39 @@ public class MapsActivity extends Activity {
 
 	private double deg2rad(double deg) {
 	    return (deg * Math.PI / 180.0);
+	}
+	private Integer getpeeps(String venue){
+		String uri = 
+				"http://192.168.1.130:8088/MongoDBServices/NoOfPeople?param="+venue;
+			     HttpClient httpclient = new DefaultHttpClient();			     
+			     HttpGet httpget = new HttpGet(uri);
+			     HttpResponse response = null;
+			     int result = 0;
+				try {
+					response = httpclient.execute(httpget);
+				} catch (ClientProtocolException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+//			     System.out.println(response.getStatusLine().toString());
+			     HttpEntity entity = response.getEntity();
+			     
+			     Gson gson = new Gson();
+			     try {
+					result = gson.fromJson(EntityUtils.toString(entity), Integer.class);
+					
+				} catch (ParseException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} return result;
+		
+		
 	}
 	
 

@@ -13,5 +13,7 @@
     <string name="title_activity_maps">MapsActivity</string>
     <string name="title_activity_friends">FriendsActivity</string>
     <string name="APP_ID">520597387960558</string>
+    <string name="title_activity_friend_profile">FriendProfileActivity</string>
+    <string name="title_activity_chat">ChatActivity</string>
 
 </resources>
