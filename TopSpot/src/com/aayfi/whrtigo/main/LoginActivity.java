@@ -3,7 +3,6 @@ package com.aayfi.whrtigo.main;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.MalformedURLException;
-import java.util.List;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -24,13 +23,12 @@ import android.widget.Toast;
 
 import com.aayfi.whrtigo.R;
 import com.facebook.android.AsyncFacebookRunner;
+import com.facebook.android.AsyncFacebookRunner.RequestListener;
 import com.facebook.android.DialogError;
 import com.facebook.android.Facebook;
-import com.facebook.android.AsyncFacebookRunner.RequestListener;
 import com.facebook.android.Facebook.DialogListener;
 import com.facebook.android.FacebookError;
 import com.quickblox.core.QBCallback;
-import com.quickblox.core.QBCallbackImpl;
 import com.quickblox.core.QBSettings;
 import com.quickblox.core.result.Result;
 import com.quickblox.internal.core.helper.StringifyArrayList;
@@ -69,6 +67,19 @@ public class LoginActivity extends Activity implements QBCallback {
 		String access_token = prefs.getString("FBAccessToken", null);
 		long expires = prefs.getLong("FBAccessExpires", 0);
 		
+		
+        //initialise Facebook with the access token expirey date from shared preference
+		if (access_token != null && expires != 0 ){
+			fb.setAccessToken(access_token);
+			fb.setAccessExpires(expires);
+			
+			Intent intent = new Intent(LoginActivity.this,MapsActivity.class);
+			intent.putExtra("already fb logged", "true");
+			finish();
+			startActivity(intent);
+			
+		}
+		
 		 // ================= QuickBlox ===== Step 1 =================
         // Initialize QuickBlox application with credentials.
         // Getting app credentials -- http://quickblox.com/developers/Getting_application_credentials
@@ -90,16 +101,6 @@ public class LoginActivity extends Activity implements QBCallback {
 				
 			}
 		});
-		
-        //initialise Facebook with the access token expirey date from shared preference
-		if (access_token != null && expires != 0 ){
-			fb.setAccessToken(access_token);
-			fb.setAccessExpires(expires);
-			getFacebookID();
-			
-		}
-		
-		
 		
 	
 		
@@ -151,7 +152,7 @@ public class LoginActivity extends Activity implements QBCallback {
 	private void signInOrSignUptoQB() {
 		
 		QBUser = new QBUser("00"+UserId+"11", UserId+UserLName);
-		Integer integ = new Integer(UserId);							
+		Integer integ = Integer.valueOf(UserId);							
 		QBUser.setId(integ);
 		QBUser.setFacebookId(UserId);
 		QBUser.setFullName(UserFName + ""+ UserLName);
@@ -163,7 +164,8 @@ public class LoginActivity extends Activity implements QBCallback {
         // Register user or sign in QuickBlox. 
 		QBUsers.signUp(QBUser, LoginActivity.this);
 		
-		Intent intent = new Intent(LoginActivity.this,MapsActivity.class);							
+		Intent intent = new Intent(LoginActivity.this,MapsActivity.class);
+		intent.putExtra("already fb logged", "false");
 		startActivity(intent);
 		
 	}

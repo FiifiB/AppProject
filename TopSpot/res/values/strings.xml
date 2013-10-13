@@ -15,5 +15,7 @@
     <string name="APP_ID">520597387960558</string>
     <string name="title_activity_friend_profile">FriendProfileActivity</string>
     <string name="title_activity_chat">ChatActivity</string>
+    <string name="title_activity_loading">LoadingActivity</string>
+    <string name="title_activity_loading_friends">LoadingFriendsActivity</string>
 
 </resources>

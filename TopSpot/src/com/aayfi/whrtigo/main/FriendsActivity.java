@@ -33,6 +33,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.location.Location;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
@@ -49,6 +50,7 @@ import android.widget.RadioButton;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
+import com.aayfi.whrtigo.LoadingFriendsActivity;
 import com.aayfi.whrtigo.R;
 import com.aayfi.whrtigo.DynamoDBTasks.GetUserIdsDynamo;
 import com.facebook.android.AsyncFacebookRunner;
@@ -72,9 +74,12 @@ public class FriendsActivity extends ListActivity {
 	private HashSet<String> IdsInVenues = new HashSet<String>();
 	private AsyncFacebookRunner myAsyncRunner;
 	private String UserId ;
+	private String UserLName;
 	private String MyLat;
 	private String MyLon;
 	private ListView listview;
+	private Menu optionsMenu;
+	private Intent overlay;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState){
@@ -134,8 +139,11 @@ public class FriendsActivity extends ListActivity {
 		    	  
 		    	  bundle.putString("ID", friend.ID);
 		    	  bundle.putString("MyID", UserId);
+		    	  bundle.putString("MyLName", UserLName);
 		    	  bundle.putString("Location", friend.Venue);
 		    	  bundle.putString("Name", friend.txtfriendName);
+		    	  bundle.putString("FriendFName", friend.FName);
+		    	  bundle.putString("FriendLName", friend.LName);
 		    	  
 		    	  intent.putExtras(bundle);
 		    	  startActivity(intent);		        
@@ -154,8 +162,9 @@ public class FriendsActivity extends ListActivity {
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) { 
 		// Inflate the menu; this adds items to the action bar if it is present.
+		optionsMenu = menu;
 		getMenuInflater().inflate(R.menu.friends, menu);
-		return true;
+		return super.onCreateOptionsMenu(menu);
 	}
 	
 	public boolean onOptionsItemSelected(MenuItem item) {
@@ -165,8 +174,12 @@ public class FriendsActivity extends ListActivity {
 	            // app icon in action bar clicked; go home
 	            Intent intent = new Intent(this, MapsActivity.class);
 	            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+	            intent.putExtra("already fb logged", "false");
 	            startActivity(intent);
 	            return true;
+	        case R.id.refresherfriends:
+	        	new FriendsListRefresher().execute();
+	        	return true;
 	        default:
 	            return super.onOptionsItemSelected(item);
 	    }
@@ -174,7 +187,7 @@ public class FriendsActivity extends ListActivity {
 	
 	private void getFacebookFriends(){
 		final String uri = 
-				"https://graph.facebook.com/me/friends?access_token="+fb.getAccessToken();
+				"https://graph.facebook.com/me/friends?fields=name,id,first_name,last_name&access_token="+fb.getAccessToken();
 		
 				HttpClient httpclient = new DefaultHttpClient();			     
 			    HttpGet httpget = new HttpGet(uri);
@@ -201,7 +214,9 @@ public class FriendsActivity extends ListActivity {
 							JSONObject friendObj =data.getJSONObject(i);
 							String id = friendObj.getString("id");
 							friend.setId(id) ;
-							friend.setName( friendObj.getString("name"));							
+							friend.setName( friendObj.getString("name"));
+							friend.setFName(friendObj.getString("first_name"));
+							friend.setLName(friendObj.getString("last_name"));
 							UserFriendsID.put(id, friend);
 						}
 					
@@ -255,28 +270,28 @@ public class FriendsActivity extends ListActivity {
 		private ProgressDialog pd;
         @Override
         protected void onPreExecute() {
-                 pd = new ProgressDialog(FriendsActivity.this);
-                 pd.setTitle("Processing Friends...");
-                 pd.setMessage("Retrieving friends in venues.\nPlease wait........");
-                 pd.setCancelable(false);
-                 pd.setIndeterminate(true);
-                 pd.show();
+        	UserFriends.clear();
+        	UserFriendsID.clear();
+        	//start refresher spinner in action bar
+        	setRefreshActionButtonState(true);
         	
+        	overlay = new Intent(FriendsActivity.this,LoadingFriendsActivity.class);
+        	startActivity(overlay);
         }
         
-//        not complete
 		@Override
 		protected Void doInBackground(Void... params) {
 			
 			getFacebookFriends();
 			
 			int num = UserFriendsID.size();
-			ArrayList<String> usersNearby = GetUsersNearby(MyLat,MyLon);
+			Location myloc = MapsActivity.getUserCurrentLoc();
+			ArrayList<String> usersNearby = GetUsersNearby(Double.toString(myloc.getLatitude()),Double.toString(myloc.getLongitude()));
 			for(String User: usersNearby){
 				String verdict = null;
 				int h = num;
 				String [] SplitOne = User.split(";");
-				System.out.println(SplitOne[0]+" "+ SplitOne[2]);
+				System.out.println(SplitOne[0]+" "+ SplitOne[1]);
 				JSONArray people = null;
 				try {
 					people = new JSONArray(SplitOne[1]);
@@ -286,7 +301,6 @@ public class FriendsActivity extends ListActivity {
 					// TODO Auto-generated catch block
 					e1.printStackTrace();
 				}
-//				verdict = SearchForUserFriends(friend.getId(),MyLat,MyLon);
 				
 				for (int i = 0; i < people.length(); i++) {
 					FBperson test = new FBperson();
@@ -304,6 +318,8 @@ public class FriendsActivity extends ListActivity {
 							String index = people.getString(i);
 							UserAndVen UserVen = new UserAndVen();
 							UserVen.txtfriendName = UserFriendsID.get(index).getName();
+							UserVen.FName = UserFriendsID.get(index).getFName();
+							UserVen.LName = UserFriendsID.get(index).getLName();
 							UserVen.Venue = SplitOne[0];
 							UserVen.ID = UserFriendsID.get(index).getId();
 							//gets picture of friend
@@ -319,20 +335,6 @@ public class FriendsActivity extends ListActivity {
 					}
 				}
 				
-//				test.setId(id);
-//				if (verdict != null && verdict != ""){
-//					Bitmap img = null;
-//					UserAndVen UserVen = new UserAndVen();
-//					UserVen.txtfriendName = friend.getName();
-//					UserVen.Venue = verdict;
-//					UserVen.ID = friend.getId();
-//					//gets picture of friend
-//					img = getFBpic(friend.getId());
-//					friend.setPic(img);
-//					UserVen.friendImg = new BitmapDrawable(friend.getPic());
-//					System.out.println("Acting populating.........");
-//					UserFriends.add(UserVen);
-//				}
 			}			
 			return null;
 		}		
@@ -341,7 +343,11 @@ public class FriendsActivity extends ListActivity {
 			
 			//method used to set friends in the list
 			listview.setAdapter(new TableAdapter(UserFriends));
-			pd.dismiss();
+			
+//			stop refresher spinner
+			setRefreshActionButtonState(false);
+			LoadingFriendsActivity.instance.finish();
+
 		}
 	}
 	
@@ -409,6 +415,8 @@ public class FriendsActivity extends ListActivity {
 	 */
 	static class UserAndVen {
 		public String txtfriendName;
+		private String FName;
+		private String LName;
 		public String Venue;
 		public Drawable friendImg;
 		public String ID;
@@ -440,7 +448,7 @@ public class FriendsActivity extends ListActivity {
 	private ArrayList<String> GetUsersNearby(String Lat,String Lon){
 		ArrayList<String> result = null;
 		String uri = 
-				"http://192.168.1.130:8088/MongoDBServices/CheckUserId?param="+Lat+"&param="+Lon;
+				"http://ec2-54-226-63-49.compute-1.amazonaws.com:8080/MongoDBServices/CheckUserId?param="+Lat+"&param="+Lon;
 			     HttpClient httpclient = new DefaultHttpClient();			     
 			     HttpGet httpget = new HttpGet(uri);
 			     HttpResponse response = null;
@@ -473,6 +481,8 @@ public class FriendsActivity extends ListActivity {
 	private class FBperson{
 		private String Id;
 		private String Name;
+		private String FName;
+		private String LName;
 		private Bitmap pic;
 		
 		public String getId() {
@@ -492,6 +502,18 @@ public class FriendsActivity extends ListActivity {
 		}
 		public void setPic(Bitmap pic) {
 			this.pic = pic;
+		}
+		public String getFName() {
+			return FName;
+		}
+		public void setFName(String fName) {
+			FName = fName;
+		}
+		public String getLName() {
+			return LName;
+		}
+		public void setLName(String lName) {
+			LName = lName;
 		}
 	}
 	
@@ -530,6 +552,7 @@ public class FriendsActivity extends ListActivity {
 		                JSONObject profile = new JSONObject(json);
 		                // getting id of the user
 		                UserId = profile.getString("id");
+		                UserLName = profile.getString("last_name");
 		 
 		            } catch (JSONException e) {
 		                e.printStackTrace();
@@ -539,6 +562,18 @@ public class FriendsActivity extends ListActivity {
 			});
 		}
 	
-	
+		public void setRefreshActionButtonState(final boolean refreshing) {
+		    if (optionsMenu != null) {
+		        final MenuItem refreshItem = optionsMenu
+		            .findItem(R.id.refresherfriends);
+		        if (refreshItem != null) {
+		            if (refreshing) {
+		                refreshItem.setActionView(R.layout.refresher_progress);
+		            } else {
+		                refreshItem.setActionView(null);
+		            }
+		        }
+		    }
+		}
 	
 }

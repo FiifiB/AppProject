@@ -2,7 +2,7 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="fill_parent"
     android:layout_height="wrap_content"
-    android:background="@drawable/ab_transparent_whrtigo" >
+    android:background="@drawable/ab_transparent_whrtigotheme" >
 
      <TextView
          android:id="@+id/VenuePopulation"
@@ -24,7 +24,7 @@
          android:paddingLeft="5dip"
          android:paddingTop="5dip"
          android:text="Venue name"
-         android:textColor="@color/pressed_whrtigo"
+         android:textColor="@color/pressed_whrtigotheme"
          android:textSize="15sp"
          android:textStyle="bold" />
 

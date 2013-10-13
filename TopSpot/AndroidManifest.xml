@@ -29,10 +29,11 @@
         android:allowBackup="true"
         android:icon="@drawable/applogo"
         android:label="@string/app_name"
-        android:theme="@style/Theme.Whrtigo" >
+        android:theme="@style/Theme.Whrtigotheme" >
         <activity
             android:name="com.aayfi.whrtigo.main.LoginActivity"
-            android:label="@string/app_name" >
+            android:label="@string/app_name"
+            android:screenOrientation="portrait" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -43,7 +44,8 @@
             android:name="com.aayfi.whrtigo.AuthorizationAndStore.OAuthAccessTokenActivity"
             android:label="@string/title_activity_oauth_access_token"
             android:launchMode="singleTask"
-            android:noHistory="true" >
+            android:noHistory="true"
+            android:screenOrientation="portrait" >
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
 
@@ -57,19 +59,23 @@
         </activity>
         <activity
             android:name="com.aayfi.whrtigo.main.ContainerActivity"
-            android:label="@string/title_activity_container" >
+            android:label="@string/title_activity_container"
+            android:screenOrientation="portrait" >
         </activity>
         <activity
             android:name="com.aayfi.whrtigo.main.ContainActivity"
-            android:label="@string/title_activity_contain" >
+            android:label="@string/title_activity_contain"
+            android:screenOrientation="portrait" >
         </activity>
         <activity
             android:name="com.aayfi.whrtigo.main.MapsActivity"
-            android:label="@string/title_activity_maps" >
+            android:label="@string/title_activity_maps"
+            android:screenOrientation="portrait" >
         </activity>
         <activity
             android:name="com.aayfi.whrtigo.main.FriendsActivity"
-            android:label="@string/title_activity_friends" >
+            android:label="@string/title_activity_friends"
+            android:screenOrientation="portrait" >
         </activity>
 
         <meta-data
@@ -78,11 +84,30 @@
 
         <activity
             android:name="com.aayfi.whrtigo.main.FriendProfileActivity"
-            android:label="@string/title_activity_friend_profile" >
+            android:label="@string/title_activity_friend_profile"
+            android:screenOrientation="portrait" >
         </activity>
         <activity
             android:name="com.aayfi.whrtigo.main.ChatActivity"
-            android:label="@string/title_activity_chat" >
+            android:label="@string/title_activity_chat"
+            android:screenOrientation="portrait" >
+        </activity>
+        <activity
+            android:name="com.aayfi.whrtigo.main.SettingsActivity"
+            android:label="@string/title_activity_settings"
+            android:screenOrientation="portrait" >
+        </activity>
+        <activity
+            android:name="com.aayfi.whrtigo.LoadingActivity"
+            android:label="@string/title_activity_loading"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.Transparent" >
+        </activity>
+        <activity
+            android:name="com.aayfi.whrtigo.LoadingFriendsActivity"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.Transparent" 
+            android:label="@string/title_activity_loading_friends" >
         </activity>
     </application>
 

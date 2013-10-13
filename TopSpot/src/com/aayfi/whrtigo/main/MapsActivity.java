@@ -50,6 +50,7 @@ import android.location.LocationManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -79,29 +80,41 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.maps.MyLocationOverlay;
 import com.google.android.maps.Overlay;
 import com.google.gson.Gson;
+import com.quickblox.core.QBCallback;
+import com.quickblox.core.QBSettings;
+import com.quickblox.core.result.Result;
+import com.quickblox.internal.core.helper.StringifyArrayList;
+import com.quickblox.module.auth.QBAuth;
+import com.quickblox.module.users.QBUsers;
+import com.quickblox.module.users.model.QBUser;
+import com.quickblox.module.users.result.QBUserResult;
 
 @SuppressWarnings("deprecation")
-public class MapsActivity extends Activity {
+public class MapsActivity extends Activity implements QBCallback {
 	private Facebook fb;
 	private String APP_ID;
 	private AsyncFacebookRunner myAsyncRunner;
 	private GoogleMap myGmap;
-	private Location myLoc;
+	private static Location myLoc;
 	private LocationManager locationManager;
 	private static int time = 50000;
 	private static int distance = 50;
 	private Criteria criteria = new Criteria();
 	private SharedPreferences prefs;
 	private String UserId ;
+	private String UserFName;
+	private String UserLName;
 	private List<Overlay> mapOverlays;
 	private ArrayList<FBLocationObj> FbLocations= new ArrayList<FBLocationObj>();
 	private VenuesOverlay locOverlay;
 	private MyLocationOverlay myLocationOverlay;
 	private ArrayList<String> RegisteredVenues = new ArrayList<String>();
+	private Boolean FbLoggedIn;
 	private Menu optionsMenu;
 	private BroadcastReceiver proxiReceiver;
 	private IntentFilter filter;
 	private static final String TREASURE_PROXIMITY_ALERT = "com.topspot.action.proximityalert";
+	private QBUser QBUser;
 	
 	
 	@Override
@@ -121,9 +134,36 @@ public class MapsActivity extends Activity {
 		String access_token = prefs.getString("FBAccessToken", null);
 		long expires = prefs.getLong("FBAccessExpires", 0);
 		
+		
+		FbLoggedIn = getIntent().getExtras().getBoolean("already fb logged");
+		
 		if (access_token != null && expires != 0 ){
 			fb.setAccessToken(access_token);
 			fb.setAccessExpires(expires);
+			if (FbLoggedIn != null && FbLoggedIn == true){
+				 // ================= QuickBlox ===== Step 1 =================
+		        // Initialize QuickBlox application with credentials.
+		        // Getting app credentials -- http://quickblox.com/developers/Getting_application_credentials
+		        QBSettings.getInstance().fastConfigInit("3795", "gZ3hsD4n-Qpjata", "XRDDFnuAd6e7KGx");
+
+		        // ================= QuickBlox ===== Step 2 =================
+		        // Authorize application.
+		        QBAuth.createSession(new QBCallback() {
+					
+					@Override
+					public void onComplete(Result arg0, Object arg1) {
+						// TODO Auto-generated method stub
+						
+					}
+					
+					@Override
+					public void onComplete(Result arg0) {
+						// TODO Auto-generated method stub
+						
+					}
+				});
+			}
+//			getFacebookID();
 		}else{
 			Intent intent = new Intent(MapsActivity.this,LoginActivity.class);
 			finish();
@@ -279,6 +319,15 @@ public class MapsActivity extends Activity {
 	                JSONObject profile = new JSONObject(json);
 	                // getting id of the user
 	                UserId = profile.getString("id");
+	                UserFName = profile.getString("first_name");
+	                UserLName = profile.getString("last_name"); 
+	                
+	                runOnUiThread(new Runnable() {
+						public void run() {
+							signInOrSignUptoQB();							
+						}
+					});
+	                
 	 
 	            } catch (JSONException e) {
 	                e.printStackTrace();
@@ -430,7 +479,7 @@ public class MapsActivity extends Activity {
 	//Get Database Locations nearby 	
 	private void getPlacesNearby(Location location){
 		String uri = 
-				"http://192.168.1.130:8088/MongoDBServices/GetLocations?param=" +
+				"http://ec2-54-226-63-49.compute-1.amazonaws.com:8080/MongoDBServices/GetLocations?param=" +
 				Double.toString(location.getLatitude()) +	"&param=" +	Double.toString(location.getLongitude());
 			     HttpClient httpclient = new DefaultHttpClient();			     
 			     HttpGet httpget = new HttpGet(uri);
@@ -521,23 +570,6 @@ public class MapsActivity extends Activity {
 		PendingIntent pendingIntent = PendingIntent.getBroadcast(getApplicationContext(), -1, intent, PendingIntent.FLAG_CANCEL_CURRENT);
 		
 		locManger.addProximityAlert(lat, lon, radius, expiration, pendingIntent);		
-	}
-	
-	private void getRegisteredLocation(){
-		String lat = Double.toString(myLoc.getLatitude());
-		String lon = Double.toString(myLoc.getLongitude());
-		
-
-		try {
-			RegisteredVenues =	new GetLocationsTask().execute(lat,lon).get();			
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (ExecutionException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
 	}
 	
 	public Integer getPeople(String Location){
@@ -712,7 +744,7 @@ public class MapsActivity extends Activity {
 	}
 	private Integer getpeeps(String venue){
 		String uri = 
-				"http://192.168.1.130:8088/MongoDBServices/NoOfPeople?param="+venue;
+				"http://ec2-54-226-63-49.compute-1.amazonaws.com:8080/MongoDBServices/NoOfPeople?param="+venue;
 			     HttpClient httpclient = new DefaultHttpClient();			     
 			     HttpGet httpget = new HttpGet(uri);
 			     HttpResponse response = null;
@@ -743,6 +775,55 @@ public class MapsActivity extends Activity {
 		
 		
 	}
+	
+	public static Location getUserCurrentLoc(){
+		return myLoc;
+	}
+	
+private void signInOrSignUptoQB() {
+		
+		QBUser = new QBUser("00"+UserId+"11", UserId+UserLName);
+		Integer integ = new Integer(UserId);							
+		QBUser.setId(integ);
+		QBUser.setFacebookId(UserId);
+		QBUser.setFullName(UserFName + ""+ UserLName);
+		StringifyArrayList<String> tags = new StringifyArrayList<String>();
+		tags.add("AppUser");
+		QBUser.setTags(tags);	
+		
+		// ================= QuickBlox ===== Step 3 =================
+        // Register user or sign in QuickBlox. 
+		QBUsers.signUp(QBUser, MapsActivity.this);
+		
+		
+	}
+
+@Override
+public void onComplete(Result result) {
+	if (result.isSuccess()) {
+        QBUserResult qbUserResult = (QBUserResult) result;
+        Log.d("Registration was successful","user: " + qbUserResult.getUser().toString());
+    } else {
+//    	List<String> error = null;
+//    	error.add("login has already been taken");							        	
+//    	if (result.getErrors().equals(error)){
+    		
+    		// ================= QuickBlox ===== Step 3 =================
+            // Login user into QuickBlox.
+            // Pass this activity , because it implements QBCallback interface.
+            // Callback result will come into onComplete method below.
+    		QBUsers.signIn(QBUser, MapsActivity.this);
+    	
+        Log.e("Errors",result.getErrors().toString()); 
+	
+			}
+}
+
+@Override
+public void onComplete(Result arg0, Object arg1) {
+	// TODO Auto-generated method stub
+	
+}
 	
 
 }
