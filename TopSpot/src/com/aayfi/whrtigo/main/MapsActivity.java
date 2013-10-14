@@ -345,6 +345,7 @@ public class MapsActivity extends Activity implements QBCallback {
         	setRefreshActionButtonState(true);
         	LatLng latLng = new LatLng(myLoc.getLatitude(), myLoc.getLongitude());
     		myGmap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 13));
+    		System.out.println("============"+myLoc.getLatitude()+"==="+myLoc.getLongitude());
     		
     		
         }

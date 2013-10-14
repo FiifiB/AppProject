@@ -37,6 +37,8 @@ public class ChatActivity extends Activity {
     private TextView friendLabel;
     private ViewGroup messagesContainer;
     private ScrollView scrollContainer;
+    private ActionBar actionBar;
+    private Bundle extras;
     
     private MyChatController myChatController;
 
@@ -45,9 +47,18 @@ public class ChatActivity extends Activity {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_chat);
 		
-		Bundle extras = getIntent().getExtras();
-		ActionBar actionBar = getActionBar();
-		actionBar.setIcon(new BitmapDrawable(getFBpic(extras.getString("FriendID"))));
+		extras = getIntent().getExtras();
+		actionBar = getActionBar();
+		
+		new Thread(new Runnable() {
+			
+			@Override
+			public void run() {
+				actionBar.setIcon(new BitmapDrawable(getFBpic(extras.getString("FriendID"))));
+				
+			}
+		}).start();;
+		
 		actionBar.setTitle(extras.getString("FriendFName"));
 		
 		
@@ -71,8 +82,8 @@ public class ChatActivity extends Activity {
         messageText = (EditText) findViewById(R.id.messageEdit);
 //        meLabel = (TextView) findViewById(R.id.meLabel);
 //        friendLabel = (TextView) findViewById(R.id.friendLabel);
-        meLabel.setText(me.getLogin() + " (me)");
-        friendLabel.setText(friend.getLogin());
+//        meLabel.setText(me.getLogin() + " (me)");
+//        friendLabel.setText(friend.getLogin());
 
         // ================= QuickBlox ===== Step 5 =================
         // Get chat login based on QuickBlox user account.
