@@ -1,4 +1,4 @@
-package com.aayfi.whrtigo.main;
+package com.aayfi.whrtigo;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
@@ -50,7 +50,6 @@ import android.widget.RadioButton;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
-import com.aayfi.whrtigo.LoadingFriendsActivity;
 import com.aayfi.whrtigo.R;
 import com.aayfi.whrtigo.DynamoDBTasks.GetUserIdsDynamo;
 import com.facebook.android.AsyncFacebookRunner;

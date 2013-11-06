@@ -1,4 +1,4 @@
-package com.aayfi.whrtigo.main;
+package com.aayfi.whrtigo;
 
 import android.app.ActionBar;
 import android.app.ActionBar.Tab;

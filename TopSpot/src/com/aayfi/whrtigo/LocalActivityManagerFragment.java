@@ -1,4 +1,4 @@
-package com.aayfi.whrtigo.main;
+package com.aayfi.whrtigo;
 
 import android.app.Fragment;
 import android.app.LocalActivityManager;

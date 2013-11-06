@@ -12,7 +12,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
 
-import com.aayfi.whrtigo.main.ContainActivity;
+import com.aayfi.whrtigo.ContainActivity;
 import com.google.api.client.auth.oauth2.draft10.AuthorizationRequestUrl;
 
 /**

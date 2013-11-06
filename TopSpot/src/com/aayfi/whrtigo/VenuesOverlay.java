@@ -1,4 +1,4 @@
-package com.aayfi.whrtigo.main;
+package com.aayfi.whrtigo;
 
 import java.util.ArrayList;
 

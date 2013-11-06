@@ -12,7 +12,7 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.util.EntityUtils;
 
-import com.aayfi.whrtigo.main.MapsActivity;
+import com.aayfi.whrtigo.MapsActivity;
 import com.google.gson.Gson;
 
 import android.os.AsyncTask;
