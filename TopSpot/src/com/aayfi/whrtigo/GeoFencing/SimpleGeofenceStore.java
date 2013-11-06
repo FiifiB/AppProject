@@ -20,6 +20,8 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 
+import com.aayfi.whrtigo.MapsActivity;
+
 /**
  * Storage for geofence values, implemented in SharedPreferences.
  * For a production app, use a content provider that's synced to the
@@ -32,7 +34,7 @@ public class SimpleGeofenceStore {
 
     // The name of the resulting SharedPreferences
     private static final String SHARED_PREFERENCE_NAME =
-                    MainActivity.class.getSimpleName();
+                    MapsActivity.class.getSimpleName();
 
     // Create the SharedPreferences storage with private access only
     public SimpleGeofenceStore(Context context) {

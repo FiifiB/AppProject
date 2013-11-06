@@ -8,6 +8,7 @@ import com.google.android.gms.location.LocationClient;
 import com.google.android.gms.location.LocationStatusCodes;
 import com.google.android.gms.location.LocationClient.OnRemoveGeofencesResultListener;
 
+import com.aayfi.whrtigo.R;
 import android.app.Activity;
 import android.app.PendingIntent;
 import android.content.Context;

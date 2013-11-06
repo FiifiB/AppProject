@@ -16,6 +16,9 @@ import android.util.Log;
 
 import java.util.List;
 
+import com.aayfi.whrtigo.MapsActivity;
+import com.aayfi.whrtigo.R;
+
 /**
  * This class receives geofence transition events from Location Services, in the
  * form of an Intent containing the transition type and geofence id(s) that triggered
@@ -117,13 +120,13 @@ public class ReceiveTransitionsIntentService extends IntentService {
 
         // Create an explicit content Intent that starts the main Activity
         Intent notificationIntent =
-                new Intent(getApplicationContext(),MainActivity.class);
+                new Intent(getApplicationContext(),MapsActivity.class);
 
         // Construct a task stack
         TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
 
         // Adds the main Activity to the task stack as the parent
-        stackBuilder.addParentStack(MainActivity.class);
+        stackBuilder.addParentStack(MapsActivity.class);
 
         // Push the content Intent onto the stack
         stackBuilder.addNextIntent(notificationIntent);

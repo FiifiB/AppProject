@@ -21,6 +21,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import com.aayfi.whrtigo.R;
+
 /**
  * Class for connecting to Location Services and requesting geofences.
  * <b>

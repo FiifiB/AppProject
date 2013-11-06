@@ -16,9 +16,12 @@
 
 package com.aayfi.whrtigo.GeoFencing;
 
+import com.aayfi.whrtigo.R;
 import com.google.android.gms.common.ConnectionResult;
+
 import android.content.Context;
 import android.content.res.Resources;
+
 
 /**
  * Map error codes to error messages.
