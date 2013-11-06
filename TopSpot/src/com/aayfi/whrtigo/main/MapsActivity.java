@@ -23,6 +23,8 @@ import org.json.JSONObject;
 import android.app.ActionBar;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.Dialog;
+import android.app.DialogFragment;
 import android.app.PendingIntent;
 import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
@@ -68,6 +70,8 @@ import com.facebook.android.AsyncFacebookRunner;
 import com.facebook.android.AsyncFacebookRunner.RequestListener;
 import com.facebook.android.Facebook;
 import com.facebook.android.FacebookError;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.GoogleMap.InfoWindowAdapter;
@@ -115,6 +119,7 @@ public class MapsActivity extends Activity implements QBCallback {
 	private IntentFilter filter;
 	private static final String TREASURE_PROXIMITY_ALERT = "com.topspot.action.proximityalert";
 	private QBUser QBUser;
+	private final static int CONNECTION_FAILURE_RESOLUTION_REQUEST = 9000;
 	
 	
 	@Override
@@ -825,6 +830,7 @@ public void onComplete(Result arg0, Object arg1) {
 	// TODO Auto-generated method stub
 	
 }
-	
+
+
 
 }

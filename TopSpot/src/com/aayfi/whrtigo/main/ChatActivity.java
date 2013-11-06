@@ -39,6 +39,7 @@ public class ChatActivity extends Activity {
     private ScrollView scrollContainer;
     private ActionBar actionBar;
     private Bundle extras;
+    private Bitmap friendpic;
     
     private MyChatController myChatController;
 
@@ -54,10 +55,17 @@ public class ChatActivity extends Activity {
 			
 			@Override
 			public void run() {
-				actionBar.setIcon(new BitmapDrawable(getFBpic(extras.getString("FriendID"))));
+				friendpic = getFBpic(extras.getString("FriendID"));
+				
+				runOnUiThread(new Runnable() {
+					public void run() {
+						actionBar.setIcon(new BitmapDrawable(friendpic));
+					}
+				});
 				
 			}
 		}).start();;
+		
 		
 		actionBar.setTitle(extras.getString("FriendFName"));
 		
